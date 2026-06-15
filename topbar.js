@@ -85,7 +85,7 @@
 .bottombar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
   display: flex; justify-content: space-around; align-items: stretch;
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  padding: 6px max(0px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
   background: #0a0a0b;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
