@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>The Void</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="sync.js" defer></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --success: #6BE3A4;
+  --warning: #F2C063;
+  --danger: #FF6B6B;
+  --void: #A78BFA;
+  --void-dim: rgba(167,139,250,0.13);
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-serif: Georgia, "Times New Roman", "Palatino Linotype", serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: #050506;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  padding: max(56px, calc(env(safe-area-inset-top) + 8px))
+           max(20px, env(safe-area-inset-right))
+           calc(90px + env(safe-area-inset-bottom))
+           max(20px, env(safe-area-inset-left));
+}
+
+/* Drift glow */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 55% 30%, rgba(167,139,250,0.11), transparent 55%),
+    radial-gradient(circle at 25% 75%, rgba(107,227,164,0.05), transparent 50%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: -2;
+  animation: drift 42s ease-in-out infinite alternate;
+}
+/* Dot texture */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes drift {
+  0%   { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(-20px,12px,0); }
+}
+
+/* ── Concentric rings ── */
+.rings-wrap {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(167,139,250,0.055);
+}
+
+/* ── Layout ── */
+.shell {
+  max-width: 580px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Memory pill ── */
+.memory-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 16px;
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 99px;
+  background: rgba(167,139,250,0.08);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--void);
+  margin-bottom: 24px;
+  font-family: var(--font-mono);
+}
+.pill-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--void);
+  animation: blink 2.2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Title ── */
+.void-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  background: linear-gradient(170deg, #FFFFFF 0%, rgba(167,139,250,0.75) 160%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ── Subtitle ── */
+.void-sub {
+  font-size: 15px;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 400px;
+  margin: 0 0 30px;
+}
+
+/* ── Textarea ── */
+.void-input-wrap {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.void-textarea {
+  width: 100%;
+  min-height: 108px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 15px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+  transition: border-color 0.18s;
+}
+.void-textarea::placeholder { color: var(--text-tertiary); }
+.void-textarea:focus { border-color: rgba(167,139,250,0.45); }
+
+/* ── Input footer ── */
+.input-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+.input-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: left;
+  flex: 1;
+}
+.throw-btn {
+  padding: 10px 22px;
+  background: var(--void);
+  border: none;
+  border-radius: 99px;
+  color: #0d0a1a;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.throw-btn:hover  { opacity: 0.88; transform: translateY(-2px); }
+.throw-btn:active { opacity: 1; transform: translateY(0); }
+
+/* ── Thoughts section ── */
+.thoughts-header {
+  width: 100%;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+  display: none;
+}
+
+.thoughts-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.thought-card {
+  background: rgba(255,255,255,0.033);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 13px 13px 10px;
+  text-align: left;
+  position: relative;
+  transition: border-color 0.18s, background 0.18s;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+/* glass shimmer */
+.thought-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.thought-card:hover {
+  border-color: rgba(167,139,250,0.28);
+  background: rgba(167,139,250,0.06);
+}
+.thought-card.expanded { grid-column: span 2; }
+
+.tc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+}
+.tc-expand {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-tertiary);
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.thought-card:hover .tc-expand {
+  border-color: rgba(167,139,250,0.4);
+  color: var(--void);
+}
+.tc-del {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,107,107,0.15);
+  background: rgba(255,107,107,0.06);
+  color: var(--danger);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.tc-del:hover { background: rgba(255,107,107,0.22); }
+
+.tc-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.55;
+  word-break: break-word;
+  margin-bottom: 9px;
+}
+.thought-card:not(.expanded) .tc-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tc-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.thoughts-empty {
+  width: 100%;
+  padding: 32px 0 12px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .void-title { font-size: 40px; }
+  .void-sub   { font-size: 14px; }
+  .thoughts-grid { grid-template-columns: 1fr; }
+  .thought-card.expanded { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- Concentric rings background -->
+<div class="rings-wrap" aria-hidden="true">
+  <div class="ring" style="width:160px;  height:160px;"></div>
+  <div class="ring" style="width:320px;  height:320px;  opacity:0.8;"></div>
+  <div class="ring" style="width:500px;  height:500px;  opacity:0.65;"></div>
+  <div class="ring" style="width:700px;  height:700px;  opacity:0.45;"></div>
+  <div class="ring" style="width:920px;  height:920px;  opacity:0.28;"></div>
+  <div class="ring" style="width:1160px; height:1160px; opacity:0.15;"></div>
+</div>
+
+<div class="shell">
+
+  <!-- Memory pill -->
+  <div class="memory-pill">
+    <span class="pill-dot"></span>
+    <span id="pill-label">MEMORY · 0 THOUGHTS</span>
+  </div>
+
+  <!-- Title -->
+  <h1 class="void-title">The void.</h1>
+
+  <!-- Subtitle -->
+  <p class="void-sub">You have about fifty thousand thoughts a day. Most disappear. The ones that matter live here — captured, timestamped, remembered.</p>
+
+  <!-- Input -->
+  <div class="void-input-wrap">
+    <textarea
+      class="void-textarea"
+      id="void-input"
+      placeholder="throw a thought in…   call dad sunday · book that flight · stretch more · idea for the app"
+      rows="4"
+    ></textarea>
+  </div>
+
+  <div class="input-footer">
+    <span class="input-hint">thoughts persist across all your devices.</span>
+    <button class="throw-btn" onclick="throwThought()">throw it in →</button>
+  </div>
+
+  <!-- Thoughts grid -->
+  <div id="thoughts-section" style="width:100%">
+    <div class="thoughts-header" id="thoughts-header">Thoughts</div>
+    <div class="thoughts-grid" id="thoughts-grid"></div>
+    <div class="thoughts-empty" id="thoughts-empty">Nothing yet. The void awaits.</div>
+  </div>
+
+</div>
+
+<script>
+let thoughts = [];
+
+/* ── Persistence ── */
+function loadThoughts() {
+  try { thoughts = JSON.parse(localStorage.getItem('void:thoughts') || '[]'); } catch { thoughts = []; }
+}
+function saveThoughts() {
+  localStorage.setItem('void:thoughts', JSON.stringify(thoughts));
+}
+
+/* ── Time formatting ── */
+function relTime(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  if (d < 7)  return d + 'd ago';
+  return new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function clockTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Render ── */
+function render() {
+  const grid    = document.getElementById('thoughts-grid');
+  const empty   = document.getElementById('thoughts-empty');
+  const header  = document.getElementById('thoughts-header');
+  const pill    = document.getElementById('pill-label');
+
+  const n = thoughts.length;
+  pill.textContent = `MEMORY · ${n} ${n === 1 ? 'THOUGHT' : 'THOUGHTS'}`;
+
+  if (n === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    header.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  header.style.display = 'block';
+
+  grid.innerHTML = thoughts.slice().reverse().map(t =>
+    `<div class="thought-card" id="tc-${t.id}">
+      <div class="tc-top">
+        <button class="tc-expand" onclick="toggleExpand('${t.id}',event)">+</button>
+        <button class="tc-del"    onclick="deleteThought('${t.id}',event)">✕</button>
+      </div>
+      <div class="tc-text">${escHtml(t.text)}</div>
+      <div class="tc-time">${clockTime(t.ts)}</div>
+    </div>`
+  ).join('');
+}
+
+/* ── Actions ── */
+function throwThought() {
+  const ta = document.getElementById('void-input');
+  const text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  thoughts.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2,7), text, ts: new Date().toISOString() });
+  saveThoughts();
+  ta.value = '';
+  render();
+  ta.focus();
+}
+
+function deleteThought(id, e) {
+  e.stopPropagation();
+  thoughts = thoughts.filter(t => t.id !== id);
+  saveThoughts();
+  render();
+}
+
+function toggleExpand(id, e) {
+  e.stopPropagation();
+  const card = document.getElementById('tc-' + id);
+  const was = card.classList.contains('expanded');
+  document.querySelectorAll('.thought-card.expanded').forEach(c => {
+    c.classList.remove('expanded');
+    c.querySelector('.tc-expand').textContent = '+';
+  });
+  if (!was) {
+    card.classList.add('expanded');
+    card.querySelector('.tc-expand').textContent = '−';
+  }
+}
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', () => {
+  // Enter = submit, Shift+Enter = newline
+  document.getElementById('void-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); throwThought(); }
+  });
+
+  loadThoughts();
+  render();
+
+  // Refresh relative times every minute
+  setInterval(render, 60000);
+
+  // Cloud sync
+  setTimeout(() => {
+    if (typeof window.initCloudSync === 'function') {
+      window.initCloudSync({
+        appKey: 'void',
+        syncedKeys: ['void:thoughts'],
+        onApplied: () => { loadThoughts(); render(); }
+      });
+    }
+  }, 500);
+});
+</script>
+</body>
+</html>
