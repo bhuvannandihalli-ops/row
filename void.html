@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
+<script src="notifications.js" defer></script>
 <style>
 :root {
   --text-primary: #FAFAFA;
@@ -325,6 +326,91 @@ body::after {
   text-align: center;
 }
 
+/* ── Notification banner ── */
+.notif-banner {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.25);
+  border-radius: 12px;
+  padding: 11px 14px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.notif-banner.visible { display: flex; }
+.notif-banner-text { flex: 1; }
+.notif-enable-btn {
+  padding: 7px 14px;
+  background: var(--void);
+  border: none;
+  border-radius: 99px;
+  color: #0d0a1a;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.notif-enable-btn:hover { opacity: 0.85; }
+.notif-dismiss {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Reminder toggle row ── */
+.reminder-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.reminder-toggle {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 99px;
+  border: 1px solid rgba(167,139,250,0.25);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.reminder-toggle.active {
+  background: rgba(167,139,250,0.12);
+  border-color: rgba(167,139,250,0.5);
+  color: var(--void);
+}
+.reminder-time-input {
+  display: none;
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  color-scheme: dark;
+}
+.reminder-time-input.visible { display: block; }
+.reminder-time-input:focus { border-color: var(--void); }
+
 /* ── Mic button ── */
 .mic-btn {
   width: 40px; height: 40px;
@@ -402,6 +488,13 @@ body::after {
 
 <div class="shell">
 
+  <!-- Notification permission banner -->
+  <div class="notif-banner" id="notif-banner">
+    <span class="notif-banner-text">🔔 Enable notifications to get reminders on your phone &amp; Mac.</span>
+    <button class="notif-enable-btn" onclick="requestNotifPermission()">Enable</button>
+    <button class="notif-dismiss" onclick="dismissNotifBanner()" title="Dismiss">✕</button>
+  </div>
+
   <!-- Memory pill -->
   <div class="memory-pill">
     <span class="pill-dot"></span>
@@ -422,6 +515,12 @@ body::after {
       placeholder="throw a thought in…   call dad sunday · book that flight · stretch more · idea for the app"
       rows="4"
     ></textarea>
+  </div>
+
+  <!-- Reminder row -->
+  <div class="reminder-row" id="reminder-row">
+    <button class="reminder-toggle" id="reminder-toggle" onclick="toggleReminder()">🔔 Remind me</button>
+    <input type="datetime-local" class="reminder-time-input" id="reminder-time" title="Reminder time">
   </div>
 
   <div class="mic-status" id="mic-status">
@@ -517,10 +616,24 @@ function throwThought() {
   const ta = document.getElementById('void-input');
   const text = ta.value.trim();
   if (!text) { ta.focus(); return; }
-  // Stop mic if recording before we clear the textarea
   if (isRecording) { setRecording(false); try { recognition.stop(); } catch {} }
+
   thoughts.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2,7), text, ts: new Date().toISOString() });
   saveThoughts();
+
+  // Schedule reminder if set
+  if (reminderEnabled) {
+    const timeVal = document.getElementById('reminder-time').value;
+    if (timeVal && window.scheduleReminder) {
+      window.scheduleReminder({ text, remindAt: new Date(timeVal).toISOString(), url: '/void.html' })
+        .then(ok => ok && showToast('Reminder set ✓'));
+    }
+    // Reset reminder toggle
+    reminderEnabled = false;
+    document.getElementById('reminder-toggle').classList.remove('active');
+    document.getElementById('reminder-time').classList.remove('visible');
+  }
+
   ta.value = '';
   render();
   ta.focus();
@@ -545,6 +658,62 @@ function toggleExpand(id, e) {
     card.classList.add('expanded');
     card.querySelector('.tc-expand').textContent = '−';
   }
+}
+
+/* ── Notifications ── */
+async function initNotifBanner() {
+  const banner = document.getElementById('notif-banner');
+  if (localStorage.getItem('notif-dismissed') === '1') return;
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+  if (Notification.permission === 'granted') return;
+  if (Notification.permission === 'denied') return;
+  banner.classList.add('visible');
+}
+
+async function requestNotifPermission() {
+  const result = await window.enableNotifications?.();
+  document.getElementById('notif-banner').classList.remove('visible');
+  if (result === 'granted') {
+    showToast('Notifications enabled ✓');
+    localStorage.setItem('notif-dismissed', '1');
+  }
+}
+
+function dismissNotifBanner() {
+  document.getElementById('notif-banner').classList.remove('visible');
+  localStorage.setItem('notif-dismissed', '1');
+}
+
+/* ── Reminder toggle ── */
+let reminderEnabled = false;
+
+function toggleReminder() {
+  reminderEnabled = !reminderEnabled;
+  const btn = document.getElementById('reminder-toggle');
+  const input = document.getElementById('reminder-time');
+  btn.classList.toggle('active', reminderEnabled);
+  input.classList.toggle('visible', reminderEnabled);
+  if (reminderEnabled) {
+    // Default to 1 hour from now
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setSeconds(0, 0);
+    input.value = d.toISOString().slice(0, 16);
+    input.focus();
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position:'fixed', bottom:'100px', left:'50%', transform:'translateX(-50%)',
+    background:'rgba(167,139,250,0.2)', border:'1px solid rgba(167,139,250,0.4)',
+    color:'#FAFAFA', padding:'9px 18px', borderRadius:'99px',
+    fontSize:'13px', fontWeight:'600', zIndex:'999',
+    transition:'opacity 0.4s', pointerEvents:'none',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2200);
 }
 
 /* ── Voice / Speech Recognition ── */
@@ -633,6 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initSpeech();
+  initNotifBanner();
   loadThoughts();
   render();
 
