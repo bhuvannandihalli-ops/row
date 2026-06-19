@@ -11,7 +11,7 @@
 <script src="topbar.js" defer></script>
 <style>
 :root {
-  --bg: #050506;
+  --bg: #060a1c;
   --bg-card: rgba(255, 255, 255, 0.04);
   --bg-secondary: rgba(255, 255, 255, 0.035);
   --bg-input: rgba(0, 0, 0, 0.28);
@@ -466,11 +466,134 @@ main {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* ===== APPLE HEALTH SECTION ===== */
+.ah-section { margin-bottom: 32px; }
+.ah-card {
+  background: rgba(255,59,48,0.06);
+  border: 1px solid rgba(255,59,48,0.18);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(20px);
+}
+.ah-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+}
+.ah-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, #ff3b30, #ff6b6b);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.ah-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ah-subtitle { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+.ah-status {
+  margin-left: auto;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; font-family: var(--font-mono);
+  padding: 3px 8px; border-radius: 999px;
+}
+.ah-status.live { background: rgba(52,199,89,0.15); color: #34c759; }
+.ah-status.waiting { background: rgba(255,255,255,0.06); color: var(--text-tertiary); }
+.ah-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 480px) { .ah-grid { grid-template-columns: repeat(2, 1fr); } }
+.ah-stat {
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.ah-stat-val {
+  font-size: 22px; font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.ah-stat-unit {
+  font-size: 11px; color: var(--text-tertiary);
+  margin-left: 2px;
+}
+.ah-stat-label {
+  font-size: 10px; color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+.ah-empty {
+  text-align: center;
+  padding: 24px 0 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ah-date {
+  font-size: 10px; color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-top: 12px; text-align: right;
+}
 </style>
 </head>
 <body>
 
 <main>
+  <section class="ah-section" id="ah-section">
+    <div class="section-title">Apple Health</div>
+    <div class="ah-card">
+      <div class="ah-header">
+        <div class="ah-icon">❤️</div>
+        <div>
+          <div class="ah-title">Today's Overview</div>
+          <div class="ah-subtitle" id="ah-date-label">Loading…</div>
+        </div>
+        <div class="ah-status waiting" id="ah-status">—</div>
+      </div>
+      <div id="ah-body">
+        <div class="ah-empty" id="ah-empty" style="display:none">
+          No data yet. Run your <strong>Health Shortcut</strong> to sync your data.
+        </div>
+        <div class="ah-grid" id="ah-grid" style="display:none">
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-steps">—</div>
+            <div class="ah-stat-label">Steps</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-hr">—</div>
+            <div class="ah-stat-label">Resting HR</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-sleep">—</div>
+            <div class="ah-stat-label">Sleep</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-cal">—</div>
+            <div class="ah-stat-label">Active Cal</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-hrv">—</div>
+            <div class="ah-stat-label">HRV</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-weight">—</div>
+            <div class="ah-stat-label">Weight</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-exercise">—</div>
+            <div class="ah-stat-label">Exercise</div>
+          </div>
+          <div class="ah-stat">
+            <div class="ah-stat-val" id="ah-distance">—</div>
+            <div class="ah-stat-label">Distance</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div class="section-title">Daily Stack</div>
 
   <div class="stack-card">
@@ -1046,6 +1169,64 @@ document.addEventListener('DOMContentLoaded', function () {
     onApplied: function () { window.dispatchEvent(new Event('storage')); }
   });
 });
+</script>
+
+<script>
+(async function loadAppleHealth() {
+  const SUPABASE_URL = 'https://szelyvlqzruwnwhnuchb.supabase.co';
+  const ANON_KEY = 'sb_publishable_G-znLn3MKl9EIK6w4jL3LQ_811bZKzz';
+
+  const statusEl = document.getElementById('ah-status');
+  const dateEl   = document.getElementById('ah-date-label');
+  const gridEl   = document.getElementById('ah-grid');
+  const emptyEl  = document.getElementById('ah-empty');
+
+  function fmt(val, decimals = 0) {
+    if (val == null) return '—';
+    return Number(val).toFixed(decimals);
+  }
+
+  try {
+    // Fetch the most recent row
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/health_daily?select=*&order=date.desc&limit=1`,
+      { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY } }
+    );
+    const rows = await res.json();
+
+    if (!rows.length) {
+      dateEl.textContent = 'No data yet';
+      statusEl.textContent = 'waiting';
+      statusEl.className = 'ah-status waiting';
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    const d = rows[0];
+    const dateStr = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    dateEl.textContent = dateStr;
+    statusEl.textContent = 'live';
+    statusEl.className = 'ah-status live';
+
+    document.getElementById('ah-steps').textContent  = d.steps != null ? Number(d.steps).toLocaleString() : '—';
+    document.getElementById('ah-hr').innerHTML        = d.resting_hr != null ? `${fmt(d.resting_hr)}<span class="ah-stat-unit">bpm</span>` : '—';
+    document.getElementById('ah-sleep').innerHTML     = d.sleep_hours != null ? `${fmt(d.sleep_hours,1)}<span class="ah-stat-unit">h</span>` : '—';
+    document.getElementById('ah-cal').innerHTML       = d.active_calories != null ? `${Number(d.active_calories).toLocaleString()}<span class="ah-stat-unit">kcal</span>` : '—';
+    document.getElementById('ah-hrv').innerHTML       = d.hrv != null ? `${fmt(d.hrv,0)}<span class="ah-stat-unit">ms</span>` : '—';
+    document.getElementById('ah-weight').innerHTML    = d.weight_kg != null ? `${fmt(d.weight_kg,1)}<span class="ah-stat-unit">kg</span>` : '—';
+    document.getElementById('ah-exercise').innerHTML  = d.exercise_minutes != null ? `${fmt(d.exercise_minutes)}<span class="ah-stat-unit">min</span>` : '—';
+    document.getElementById('ah-distance').innerHTML  = d.distance_km != null ? `${fmt(d.distance_km,1)}<span class="ah-stat-unit">km</span>` : '—';
+
+    gridEl.style.display  = 'grid';
+    emptyEl.style.display = 'none';
+
+  } catch (e) {
+    dateEl.textContent = 'Could not load';
+    statusEl.textContent = 'error';
+    statusEl.className = 'ah-status waiting';
+    emptyEl.style.display = 'block';
+  }
+})();
 </script>
 
 </body>
