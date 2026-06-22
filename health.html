@@ -660,17 +660,12 @@ main {
     return `${y}-${m}-${d}`;
   }
 
-  const TEMPLATE_VERSION = 5;
+  const TEMPLATE_VERSION = 6;
 
   const STACK_DEFAULTS = [
-    { id: 'm1', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'm2', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: 'stack', ordered: true  },
-    { id: 'm3', name: 'XXXXX - Supplement of choice', dose: '', window: 'morning', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'l1', name: 'XXXXX - Supplement of choice', dose: '', window: 'lunch',   note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'l2', name: 'XXXXX - Supplement of choice', dose: '', window: 'lunch',   note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'e1', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
-    { id: 'e2', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: 'not-ordered', ordered: false },
-    { id: 'e3', name: 'XXXXX - Supplement of choice', dose: '', window: 'evening', note: 'how much MG, meal times, any data below', tag: null,    ordered: true  },
+    { id: 'm1', name: 'Electrolytes', dose: '1 serving', window: 'morning', note: 'Mix with water — sodium, magnesium, potassium blend', tag: null, ordered: true },
+    { id: 'm2', name: 'Creatine monohydrate', dose: '5g', window: 'anytime', note: 'Daily — consistency matters more than timing', tag: null, ordered: true },
+    { id: 'm3', name: 'Potassium', dose: '200–400mg', window: 'morning', note: 'With food — supports muscle function and hydration', tag: null, ordered: true },
   ];
 
   const STACK_WINDOWS = [
@@ -682,6 +677,8 @@ main {
 
   // ====== SUPPLEMENT DATABASE — researched defaults ======
   const SUPPLEMENT_DB = [
+    { name: 'Electrolytes', dose: '1 serving', window: 'morning', note: 'Mix with water — sodium, magnesium, potassium blend', icon: '💧', aliases: ['electrolyte', 'lmnt', 'liquid iv', 'hydration'] },
+    { name: 'Potassium', dose: '200–400mg', window: 'morning', note: 'With food — supports muscle function and hydration', icon: '🍌', aliases: ['potassium', 'potassium chloride'] },
     { name: 'Creatine monohydrate', dose: '5g', window: 'anytime', note: 'Daily — consistency matters more than timing', icon: '🏋️', aliases: ['creatine'] },
     { name: 'Beta-alanine', dose: '2–5g', window: 'morning', note: 'Pre-workout — split doses to avoid tingles', icon: '🏋️', aliases: ['beta alanine'] },
     { name: 'L-citrulline', dose: '6–8g', window: 'morning', note: '~30 min pre-workout for pump', icon: '🏋️', aliases: ['citrulline'] },
