@@ -350,6 +350,27 @@ REASON: [1-2 sentences explaining why this time suits the user's energy and heal
   }
 }
 
+function makeIcs(name, reasoning, h, m) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const d  = String(now.getDate()).padStart(2,'0');
+  const hStr = String(h).padStart(2,'0');
+  const mStr = String(m).padStart(2,'0');
+  const endH = String((h+1) % 24).padStart(2,'0');
+  const uid  = `${Date.now()}@row-dashboard`;
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Row Dashboard//Plan//EN',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART:${y}${mo}${d}T${hStr}${mStr}00`,
+    `DTEND:${y}${mo}${d}T${endH}${mStr}00`,
+    `SUMMARY:${name}`,
+    `DESCRIPTION:${reasoning.replace(/\n/g,'\\n')}`,
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+}
+
 function showResult(task) {
   const [h, m] = task.time.split(':').map(Number);
   const display12 = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
@@ -358,34 +379,35 @@ function showResult(task) {
   document.getElementById('ai-time-pill').textContent = display12;
   document.getElementById('ai-reasoning').textContent = task.reasoning;
 
-  // Build Google Calendar URL
-  const today = new Date();
-  const y = today.getFullYear();
-  const mo = String(today.getMonth()+1).padStart(2,'0');
-  const d  = String(today.getDate()).padStart(2,'0');
-  const hStr = String(h).padStart(2,'0');
-  const mStr = String(m).padStart(2,'0');
-  const endH = String((h+1) % 24).padStart(2,'0');
-  const startDt = `${y}${mo}${d}T${hStr}${mStr}00`;
-  const endDt   = `${y}${mo}${d}T${endH}${mStr}00`;
-  const calUrl  = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(task.name)}&dates=${startDt}/${endDt}&details=${encodeURIComponent(task.reasoning)}`;
+  // Build .ics blob — tap opens native "Add to Calendar" on iOS
+  const ics = makeIcs(task.name, task.reasoning, h, m);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
 
-  document.getElementById('btn-calendar').href = calUrl;
+  const btn = document.getElementById('btn-calendar');
+  btn.href = blobUrl;
+  btn.download = `${task.name.replace(/[^a-z0-9]/gi,'_')}.ics`;
+
+  // Also store Google Calendar URL as fallback
+  const today = new Date();
+  const y = today.getFullYear(), mo = String(today.getMonth()+1).padStart(2,'0'), d2 = String(today.getDate()).padStart(2,'0');
+  const hStr = String(h).padStart(2,'0'), mStr = String(m).padStart(2,'0'), endH = String((h+1)%24).padStart(2,'0');
+  const calUrl = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(task.name)}&dates=${y}${mo}${d2}T${hStr}${mStr}00/${y}${mo}${d2}T${endH}${mStr}00&details=${encodeURIComponent(task.reasoning)}`;
+
   document.getElementById('ai-result').classList.add('visible');
 
   // Save and render task
-  savePendingTask(task, display12, calUrl);
+  savePendingTask(task, display12, calUrl, h, m);
   document.getElementById('task-input').value = '';
   document.getElementById('time-input').value = '';
 }
 
 // ── Persist tasks locally ──────────────────────────────────────────────────
-function savePendingTask(task, display12, calUrl) {
+function savePendingTask(task, display12, calUrl, h, m) {
   const stored = JSON.parse(localStorage.getItem(TASKS_LS) || '[]');
   const today = new Date().toISOString().substring(0,10);
-  // keep only today's tasks
   const todayTasks = stored.filter(t => t.date === today);
-  todayTasks.unshift({ name: task.name, time: display12, calUrl, date: today, reasoning: task.reasoning });
+  todayTasks.unshift({ name: task.name, time: display12, calUrl, date: today, reasoning: task.reasoning, h, m });
   localStorage.setItem(TASKS_LS, JSON.stringify(todayTasks));
   renderTasks();
 }
@@ -403,16 +425,20 @@ function renderTasks() {
     return;
   }
   heading.style.display = 'block';
-  list.innerHTML = todayTasks.map(t => `
+  list.innerHTML = todayTasks.map(t => {
+    const ics = (t.h != null && t.m != null) ? makeIcs(t.name, t.reasoning, t.h, t.m) : null;
+    const blob = ics ? URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })) : t.calUrl;
+    const fname = t.name.replace(/[^a-z0-9]/gi,'_') + '.ics';
+    return `
     <div class="task-item">
       <div class="task-dot"></div>
       <div class="task-info">
         <div class="task-name">${escHtml(t.name)}</div>
-        <div class="task-meta">${t.time} · ${escHtml(t.reasoning.substring(0,80))}…</div>
+        <div class="task-meta">${t.time} · ${escHtml((t.reasoning||'').substring(0,80))}…</div>
       </div>
-      <a class="task-cal-link" href="${t.calUrl}" target="_blank">+ Cal</a>
-    </div>
-  `).join('');
+      <a class="task-cal-link" href="${blob}" download="${fname}">+ Cal</a>
+    </div>`;
+  }).join('');
 }
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
