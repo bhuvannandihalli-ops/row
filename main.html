@@ -1448,31 +1448,32 @@ body::after {
       const rows = await res.json();
       if (!Array.isArray(rows) || !rows.length) return;
 
-      // Average wake hour over recent days to learn schedule
-      const wakeTimes = rows
-        .filter(r => r.updated_at)
-        .map(r => { const t = new Date(r.updated_at); return t.getHours() + t.getMinutes() / 60; })
-        .filter(h => h > 4 && h < 14); // sanity: 4 AM–2 PM
-
-      if (wakeTimes.length) {
-        WAKE_HOUR = wakeTimes.reduce((a, b) => a + b, 0) / wakeTimes.length;
-      }
-
-      // Update the label with today's actual data if available
-      const today = rows[0];
-      const wakeTime = new Date(today.updated_at);
       const todayStr = new Date().toISOString().substring(0, 10);
+      const today = rows[0];
       const hoursEl = document.getElementById('dayRingHours');
-      if (hoursEl) {
-        if (today.date === todayStr) {
+
+      // If today's health sync exists, use that wake time directly
+      if (today.date === todayStr && today.updated_at) {
+        const wakeTime = new Date(today.updated_at);
+        WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
+        if (hoursEl) {
           const wakeStr = wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const sleepStr = today.sleep_hours ? `${Number(today.sleep_hours).toFixed(1)}h sleep` : '';
           hoursEl.textContent = sleepStr ? `Woke ${wakeStr} · ${sleepStr}` : `Woke ${wakeStr}`;
-        } else {
-          const wh = Math.round(WAKE_HOUR);
-          const wm = Math.round((WAKE_HOUR - wh) * 60);
+        }
+      } else {
+        // Learn average wake time from past days (4 AM–2 PM range)
+        const wakeTimes = rows
+          .filter(r => r.updated_at)
+          .map(r => { const t = new Date(r.updated_at); return t.getHours() + t.getMinutes() / 60; })
+          .filter(h => h > 4 && h < 14);
+        if (wakeTimes.length) {
+          WAKE_HOUR = wakeTimes.reduce((a, b) => a + b, 0) / wakeTimes.length;
+        }
+        if (hoursEl) {
+          const wh = Math.floor(WAKE_HOUR), wm = Math.round((WAKE_HOUR - wh) * 60);
           const d = new Date(); d.setHours(wh, wm, 0, 0);
-          hoursEl.textContent = `Avg wake ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · syncing…`;
+          hoursEl.textContent = `Avg wake ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · sync pending`;
         }
       }
       updateDayRing();
