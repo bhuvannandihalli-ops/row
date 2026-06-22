@@ -42,8 +42,11 @@ module.exports = async function handler(req, res) {
   // Simple flat format from Apple Shortcuts:
   // { "date": "2024-01-15", "steps": 8432, "resting_hr": 58, ... }
   const rawDate = String(body.date || '').substring(0, 10);
-  if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
-    rows = [{ date: rawDate, updated_at: new Date().toISOString(),
+  const hasHealthFields = ['steps','resting_hr','active_calories','hrv','weight_kg','exercise_minutes','distance_km','sleep_hours'].some(k => body[k] != null);
+  const effectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : new Date().toISOString().substring(0, 10);
+
+  if (hasHealthFields || /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    rows = [{ date: effectiveDate, updated_at: new Date().toISOString(),
       steps:            body.steps            != null ? Math.round(body.steps)            : undefined,
       resting_hr:       body.resting_hr       != null ? Number(body.resting_hr)           : undefined,
       sleep_hours:      body.sleep_hours      != null ? Number(body.sleep_hours)          : undefined,
@@ -72,7 +75,7 @@ module.exports = async function handler(req, res) {
     rows = Object.values(byDate);
   }
 
-  if (!rows.length) return res.json({ ok: true, inserted: 0, debug_received: Object.keys(body), debug_date: body.date });
+  if (!rows.length) return res.json({ ok: true, inserted: 0, debug_keys: Object.keys(body) });
 
   const { error } = await supabase
     .from('health_daily')
