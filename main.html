@@ -959,6 +959,9 @@ body::after {
   fillEl.setAttribute('stroke-dasharray', C);
   fillEl.setAttribute('stroke-dashoffset', C);
 
+  // Set to true once today's health sync is confirmed (alarm was dismissed)
+  let alarmDismissedToday = false;
+
   function updateDayRing() {
     const now = new Date();
     const hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
@@ -970,14 +973,14 @@ body::after {
 
     clockEl.textContent = formatClock(now);
 
-    if (hours < WAKE_HOUR) {
+    // Show sleeping if alarm hasn't been dismissed today (no health sync yet)
+    if (!alarmDismissedToday) {
       fillEl.setAttribute('stroke-dashoffset', C);
       fillEl.style.stroke = '#4D4B47';
       percentEl.textContent = '—';
       phaseEl.textContent   = 'SLEEPING';
       statusEl.textContent  = '😴 Still sleeping';
-      const minsUntil = (WAKE_HOUR - hours) * 60;
-      remainingEl.textContent = formatRemaining(minsUntil) + ' until wake-up';
+      remainingEl.textContent = 'Dismiss alarm to start your day';
       return;
     }
 
@@ -1452,8 +1455,9 @@ body::after {
       const today = rows[0];
       const hoursEl = document.getElementById('dayRingHours');
 
-      // If today's health sync exists, use that wake time directly
+      // If today's health sync exists, alarm was dismissed → they're awake
       if (today.date === todayStr && today.updated_at) {
+        alarmDismissedToday = true;
         const wakeTime = new Date(today.updated_at);
         WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
         if (hoursEl) {
