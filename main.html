@@ -706,7 +706,7 @@ body::after {
         <div class="schedule-result" id="scheduleResult">
           <div class="sr-time" id="srTime"></div>
           <div class="sr-reason" id="srReason"></div>
-          <a class="sr-cal-btn" id="srCalBtn" href="#" download="">📅 Add to Calendar</a>
+          <a class="sr-cal-btn" id="srCalBtn" href="#" target="_blank">📅 Open in Google Calendar</a>
         </div>
       </div>
     </div>
@@ -1337,6 +1337,9 @@ body::after {
     const btn = document.getElementById('goalScheduleBtn');
     const result = document.getElementById('scheduleResult');
 
+    // Open a new tab NOW (must be synchronous during click to avoid popup blocker)
+    const calWin = apiKey ? window.open('', '_blank') : null;
+
     btn.disabled = true;
     btn.textContent = '…';
     result.classList.remove('visible');
@@ -1394,14 +1397,25 @@ body::after {
         const reason = reasonMatch ? reasonMatch[1].trim() : '';
         document.getElementById('srTime').textContent = `Best time: ${disp}`;
         document.getElementById('srReason').textContent = reason;
-        const ics = makeIcsMain(taskName, h, m, reason);
-        const blob = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+
+        // Build Google Calendar URL and send the already-open tab there
+        const now = new Date();
+        const y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
+        const hh = String(h).padStart(2,'0'), mm2 = String(m).padStart(2,'0'), eh = String((h+1)%24).padStart(2,'0');
+        const gcalUrl = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(taskName)}&dates=${y}${mo}${dd}T${hh}${mm2}00/${y}${mo}${dd}T${eh}${mm2}00&details=${encodeURIComponent(reason)}`;
+        if (calWin) calWin.location = gcalUrl;
+
+        // Also show inline result with calendar link as fallback
         const calBtn = document.getElementById('srCalBtn');
-        calBtn.href = blob;
-        calBtn.download = taskName.replace(/[^a-z0-9]/gi,'_') + '.ics';
+        calBtn.href = gcalUrl;
+        calBtn.removeAttribute('download');
+        calBtn.target = '_blank';
         result.classList.add('visible');
+      } else if (calWin) {
+        calWin.close();
       }
     } catch(e) {
+      if (calWin) calWin.close();
       showStatus(document.getElementById('polishStatus'), 'AI scheduling failed — goal added as-is.', true);
     }
     btn.disabled = false; btn.textContent = '📅 Schedule';
