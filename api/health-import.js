@@ -24,13 +24,26 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const body = req.body || {};
+  // Robust body parsing — handles JSON string, Buffer, or pre-parsed object
+  let body = req.body;
+  if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
+    try {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const text = Buffer.concat(chunks).toString('utf8');
+      body = text ? JSON.parse(text) : {};
+    } catch (e) { body = {}; }
+  } else if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch (e) { body = {}; }
+  }
+  body = body || {};
   let rows = [];
 
   // Simple flat format from Apple Shortcuts:
   // { "date": "2024-01-15", "steps": 8432, "resting_hr": 58, ... }
-  if (body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
-    rows = [{ date: body.date, updated_at: new Date().toISOString(),
+  const rawDate = String(body.date || '').substring(0, 10);
+  if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    rows = [{ date: rawDate, updated_at: new Date().toISOString(),
       steps:            body.steps            != null ? Math.round(body.steps)            : undefined,
       resting_hr:       body.resting_hr       != null ? Number(body.resting_hr)           : undefined,
       sleep_hours:      body.sleep_hours      != null ? Number(body.sleep_hours)          : undefined,
@@ -59,7 +72,7 @@ module.exports = async function handler(req, res) {
     rows = Object.values(byDate);
   }
 
-  if (!rows.length) return res.json({ ok: true, inserted: 0 });
+  if (!rows.length) return res.json({ ok: true, inserted: 0, debug_received: Object.keys(body), debug_date: body.date });
 
   const { error } = await supabase
     .from('health_daily')
@@ -67,5 +80,5 @@ module.exports = async function handler(req, res) {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  return res.json({ ok: true, inserted: rows.length });
+  return res.json({ ok: true, inserted: rows.length, date: rows[0]?.date });
 };
