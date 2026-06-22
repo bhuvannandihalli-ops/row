@@ -670,6 +670,7 @@ body::after {
       <div class="day-ring-status"    id="dayRingStatus">Loading…</div>
       <div class="day-ring-remaining" id="dayRingRemaining">—</div>
       <div class="day-ring-hours" id="dayRingHours">8:00 AM – 12:00 AM</div>
+      <button id="sleepToggleBtn" style="margin-top:10px;padding:6px 14px;border-radius:99px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#B8B6B0;font-size:12px;font-weight:600;cursor:pointer;">🌙 Going to sleep</button>
     </div>
   </div>
 
@@ -962,6 +963,28 @@ body::after {
   // Set to true once today's health sync is confirmed (alarm was dismissed)
   let alarmDismissedToday = false;
 
+  // Sleep toggle button
+  (function initSleepToggle() {
+    const btn = document.getElementById('sleepToggleBtn');
+    if (!btn) return;
+    function refreshBtn() {
+      const sleeping = localStorage.getItem('sleep_mode') === 'true';
+      btn.textContent = sleeping ? '🌅 I woke up' : '🌙 Going to sleep';
+      btn.style.color = sleeping ? '#F5A623' : '#B8B6B0';
+    }
+    refreshBtn();
+    btn.addEventListener('click', () => {
+      const sleeping = localStorage.getItem('sleep_mode') === 'true';
+      if (sleeping) {
+        localStorage.removeItem('sleep_mode');
+      } else {
+        localStorage.setItem('sleep_mode', 'true');
+      }
+      refreshBtn();
+      updateDayRing();
+    });
+  })();
+
   function updateDayRing() {
     const now = new Date();
     const hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
@@ -973,13 +996,14 @@ body::after {
 
     clockEl.textContent = formatClock(now);
 
-    // Show sleeping if alarm hasn't been dismissed today (no health sync yet)
-    if (!alarmDismissedToday) {
+    // Show sleeping only when user explicitly toggled sleep mode
+    const isSleeping = !alarmDismissedToday && localStorage.getItem('sleep_mode') === 'true';
+    if (isSleeping) {
       fillEl.setAttribute('stroke-dashoffset', C);
       fillEl.style.stroke = '#4D4B47';
       percentEl.textContent = '—';
       phaseEl.textContent   = 'SLEEPING';
-      statusEl.textContent  = '😴 Still sleeping';
+      statusEl.textContent  = '😴 Sleeping…';
       remainingEl.textContent = 'Dismiss alarm to start your day';
       return;
     }
@@ -1458,6 +1482,9 @@ body::after {
       // If today's health sync exists, alarm was dismissed → they're awake
       if (today.date === todayStr && today.updated_at) {
         alarmDismissedToday = true;
+        localStorage.removeItem('sleep_mode'); // clear sleep mode — day has started
+        const btn = document.getElementById('sleepToggleBtn');
+        if (btn) { btn.textContent = '🌙 Going to sleep'; btn.style.color = '#B8B6B0'; }
         const wakeTime = new Date(today.updated_at);
         WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
         if (hoursEl) {
