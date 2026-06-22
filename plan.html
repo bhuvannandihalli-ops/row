@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060a1c">
+<meta name="color-scheme" content="dark">
+<title>Plan — Daily Scheduler</title>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #060a1c;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-input: rgba(0,0,0,0.28);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --accent: #6EE7B7;
+  --accent-dim: rgba(110,231,183,0.12);
+  --radius: 16px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(110,231,183,0.07), transparent);
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+}
+
+.page { position: relative; z-index: 2; max-width: 600px; margin: 0 auto; padding: 0 16px 60px; }
+
+/* back */
+.back { display: inline-flex; align-items: center; gap: 6px; margin: 20px 0 24px;
+  color: var(--text-secondary); font-size: 14px; font-weight: 500;
+  text-decoration: none; border: none; background: none; cursor: pointer; padding: 0; }
+.back:hover { color: var(--text-primary); }
+.back svg { width: 16px; height: 16px; }
+
+/* header */
+.page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+.page-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; }
+
+/* health summary strip */
+.health-strip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  display: flex; gap: 0; overflow-x: auto;
+}
+.health-strip::-webkit-scrollbar { display: none; }
+.hs-stat { flex: 0 0 auto; text-align: center; padding: 0 14px; border-right: 1px solid var(--border); }
+.hs-stat:last-child { border-right: none; }
+.hs-val { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.hs-val span { font-size: 11px; font-weight: 500; color: var(--text-tertiary); }
+.hs-label { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+.health-strip.no-data { justify-content: center; align-items: center; min-height: 60px; color: var(--text-tertiary); font-size: 13px; }
+
+/* task input card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card-title { font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+
+.input-row { display: flex; flex-direction: column; gap: 10px; }
+.input-wrap { position: relative; }
+.task-input {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-primary); font-size: 15px;
+  outline: none; transition: border-color 0.2s;
+}
+.task-input::placeholder { color: var(--text-tertiary); }
+.task-input:focus { border-color: var(--accent); }
+
+.time-row { display: flex; gap: 10px; align-items: center; }
+.time-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.time-input {
+  flex: 1; padding: 10px 12px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-primary); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.time-input:focus { border-color: var(--accent); }
+.time-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+
+.btn-schedule {
+  width: 100%; padding: 13px;
+  background: var(--accent); color: #060a1c;
+  border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.2s; margin-top: 4px;
+}
+.btn-schedule:hover { opacity: 0.88; }
+.btn-schedule:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* AI result */
+.ai-result {
+  background: var(--bg-card);
+  border: 1px solid rgba(110,231,183,0.2);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  display: none;
+}
+.ai-result.visible { display: block; }
+.ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ai-badge { font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em;
+  background: var(--accent-dim); padding: 3px 8px; border-radius: 99px; }
+.ai-task-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.ai-time-pill {
+  display: inline-block;
+  background: var(--accent-dim); color: var(--accent);
+  font-size: 14px; font-weight: 700;
+  padding: 4px 12px; border-radius: 99px;
+  margin-bottom: 12px;
+}
+.ai-reasoning { font-size: 14px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 16px; }
+
+.btn-calendar {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px;
+  background: transparent; border: 1px solid var(--border-strong);
+  border-radius: 10px; color: var(--text-primary);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  text-decoration: none; transition: background 0.2s, border-color 0.2s;
+}
+.btn-calendar:hover { background: rgba(255,255,255,0.05); border-color: var(--accent); }
+.btn-calendar svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* past tasks */
+.tasks-list { display: flex; flex-direction: column; gap: 10px; }
+.task-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.task-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 14px; font-weight: 600; }
+.task-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.task-cal-link { font-size: 12px; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+.tasks-empty { font-size: 14px; color: var(--text-tertiary); text-align: center; padding: 20px 0; }
+
+/* no api key warning */
+.no-key { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #FCA5A5;
+  margin-top: 10px; display: none; }
+.no-key a { color: #FCA5A5; }
+
+/* dots loader */
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block;
+  animation: dot-bounce 1.2s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: 0.2s; }
+.dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+</style>
+</head>
+<body>
+<div class="page">
+  <a href="index.html" class="back">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M10 3L5 8l5 5"/>
+    </svg>
+    Home
+  </a>
+
+  <div class="page-title">Plan Your Day</div>
+  <div class="page-sub" id="plan-sub">Loading today's health data…</div>
+
+  <!-- Health summary -->
+  <div class="health-strip" id="health-strip">
+    <div class="tasks-empty">Loading…</div>
+  </div>
+
+  <!-- Task input -->
+  <div class="card">
+    <div class="card-title">Add a Task</div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <input class="task-input" id="task-input" type="text" placeholder="e.g. Gym, Study, Call dentist…" autocomplete="off">
+      </div>
+      <div class="time-row">
+        <span class="time-label">Time (optional)</span>
+        <input class="time-input" id="time-input" type="time">
+      </div>
+      <div class="time-hint">Leave time blank — AI will suggest the best time based on your health stats</div>
+      <button class="btn-schedule" id="btn-schedule">Schedule with AI</button>
+      <div class="no-key" id="no-key">Nova API key not set. <a href="nova-lite.html">Add it here</a> first.</div>
+    </div>
+  </div>
+
+  <!-- AI result -->
+  <div class="ai-result" id="ai-result">
+    <div class="ai-header">
+      <span class="ai-badge">AI Suggestion</span>
+    </div>
+    <div class="ai-task-name" id="ai-task-name"></div>
+    <div class="ai-time-pill" id="ai-time-pill"></div>
+    <div class="ai-reasoning" id="ai-reasoning"></div>
+    <a class="btn-calendar" id="btn-calendar" href="#" target="_blank">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <rect x="2" y="3" width="12" height="11" rx="2"/>
+        <path d="M2 7h12M6 1v2M10 1v2"/>
+      </svg>
+      Add to Google Calendar
+    </a>
+  </div>
+
+  <!-- Today's tasks -->
+  <div class="card-title" id="tasks-heading" style="margin-bottom:12px;display:none">Today's Tasks</div>
+  <div class="tasks-list" id="tasks-list"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://szelyvlqzruwnwhnuchb.supabase.co';
+const ANON_KEY = 'sb_publishable_G-znLn3MKl9EIK6w4jL3LQ_811bZKzz';
+const KEY_LS = 'nova_lite_api_key';
+const TASKS_LS = 'plan_tasks';
+
+let healthData = null;
+let pendingTask = null;
+
+// ── Fetch today's health data ──────────────────────────────────────────────
+(async () => {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/health_daily?select=*&order=date.desc&limit=1`,
+      { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY } }
+    );
+    const rows = await res.json();
+    if (!rows.length) throw new Error('no data');
+    healthData = rows[0];
+    renderHealthStrip(healthData);
+  } catch {
+    document.getElementById('health-strip').innerHTML = '<span style="color:var(--text-tertiary);font-size:13px">No health data yet — run your shortcut first</span>';
+    document.getElementById('health-strip').classList.add('no-data');
+    document.getElementById('plan-sub').textContent = 'Add tasks and let AI suggest the best time';
+  }
+})();
+
+function fmt(v, dec = 0) { return v == null ? '—' : Number(v).toFixed(dec); }
+
+function renderHealthStrip(d) {
+  const dateStr = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  document.getElementById('plan-sub').textContent = `Based on your stats · ${dateStr}`;
+  document.getElementById('health-strip').innerHTML = `
+    <div class="hs-stat"><div class="hs-val">${d.sleep_hours != null ? fmt(d.sleep_hours,1)+'<span>h</span>' : '—'}</div><div class="hs-label">Sleep</div></div>
+    <div class="hs-stat"><div class="hs-val">${d.steps != null ? Number(d.steps).toLocaleString() : '—'}</div><div class="hs-label">Steps</div></div>
+    <div class="hs-stat"><div class="hs-val">${d.resting_hr != null && d.resting_hr > 0 ? fmt(d.resting_hr)+'<span>bpm</span>' : '—'}</div><div class="hs-label">Rest HR</div></div>
+    <div class="hs-stat"><div class="hs-val">${d.hrv != null && d.hrv > 0 ? fmt(d.hrv,0)+'<span>ms</span>' : '—'}</div><div class="hs-label">HRV</div></div>
+    <div class="hs-stat"><div class="hs-val">${d.active_calories != null && d.active_calories > 0 ? Number(d.active_calories).toLocaleString()+'<span>kcal</span>' : '—'}</div><div class="hs-label">Calories</div></div>
+    <div class="hs-stat"><div class="hs-val">${d.exercise_minutes != null && d.exercise_minutes > 0 ? fmt(d.exercise_minutes)+'<span>min</span>' : '—'}</div><div class="hs-label">Exercise</div></div>
+  `;
+}
+
+// ── AI scheduling ──────────────────────────────────────────────────────────
+document.getElementById('btn-schedule').addEventListener('click', scheduleTask);
+document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') scheduleTask(); });
+
+async function scheduleTask() {
+  const taskName = document.getElementById('task-input').value.trim();
+  const timeVal  = document.getElementById('time-input').value;
+  if (!taskName) { document.getElementById('task-input').focus(); return; }
+
+  const key = localStorage.getItem(KEY_LS);
+  if (!key) { document.getElementById('no-key').style.display = 'block'; return; }
+  document.getElementById('no-key').style.display = 'none';
+
+  const btn = document.getElementById('btn-schedule');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+
+  const healthSummary = healthData ? [
+    healthData.sleep_hours != null   ? `Sleep: ${healthData.sleep_hours.toFixed(1)}h` : null,
+    healthData.resting_hr > 0        ? `Resting HR: ${healthData.resting_hr}bpm` : null,
+    healthData.hrv > 0               ? `HRV: ${healthData.hrv}ms` : null,
+    healthData.steps > 0             ? `Steps: ${healthData.steps}` : null,
+    healthData.active_calories > 0   ? `Active calories: ${healthData.active_calories}kcal` : null,
+    healthData.exercise_minutes > 0  ? `Exercise: ${healthData.exercise_minutes}min` : null,
+  ].filter(Boolean).join(', ') : 'No health data available today';
+
+  const userTimeNote = timeVal ? `The user has specified a preferred time of ${timeVal}.` : 'The user has not specified a time — suggest the optimal time.';
+
+  const prompt = `Today's health stats: ${healthSummary}.
+
+Task to schedule: "${taskName}"
+${userTimeNote}
+
+Reply in this exact format (nothing else):
+TIME: [HH:MM in 24h format, e.g. 14:30]
+REASON: [1-2 sentences explaining why this time suits the user's energy and health stats]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: 'You are a personal schedule optimizer. You analyze health metrics to suggest optimal task timing. Be concise and direct.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+
+    const text = json.content[0].text;
+    const timeMatch   = text.match(/TIME:\s*(\d{1,2}:\d{2})/);
+    const reasonMatch = text.match(/REASON:\s*(.+)/s);
+
+    const suggestedTime = timeMatch ? timeMatch[1] : (timeVal || '10:00');
+    const reasoning     = reasonMatch ? reasonMatch[1].trim() : text;
+
+    pendingTask = { name: taskName, time: suggestedTime, reasoning };
+    showResult(pendingTask);
+
+  } catch(e) {
+    document.getElementById('ai-result').classList.add('visible');
+    document.getElementById('ai-reasoning').textContent = 'Could not reach AI — check your Nova API key.';
+    document.getElementById('ai-time-pill').textContent = timeVal || '—';
+    document.getElementById('ai-task-name').textContent = taskName;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Schedule with AI';
+  }
+}
+
+function showResult(task) {
+  const [h, m] = task.time.split(':').map(Number);
+  const display12 = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h < 12 ? 'AM' : 'PM'}`;
+
+  document.getElementById('ai-task-name').textContent = task.name;
+  document.getElementById('ai-time-pill').textContent = display12;
+  document.getElementById('ai-reasoning').textContent = task.reasoning;
+
+  // Build Google Calendar URL
+  const today = new Date();
+  const y = today.getFullYear();
+  const mo = String(today.getMonth()+1).padStart(2,'0');
+  const d  = String(today.getDate()).padStart(2,'0');
+  const hStr = String(h).padStart(2,'0');
+  const mStr = String(m).padStart(2,'0');
+  const endH = String((h+1) % 24).padStart(2,'0');
+  const startDt = `${y}${mo}${d}T${hStr}${mStr}00`;
+  const endDt   = `${y}${mo}${d}T${endH}${mStr}00`;
+  const calUrl  = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(task.name)}&dates=${startDt}/${endDt}&details=${encodeURIComponent(task.reasoning)}`;
+
+  document.getElementById('btn-calendar').href = calUrl;
+  document.getElementById('ai-result').classList.add('visible');
+
+  // Save and render task
+  savePendingTask(task, display12, calUrl);
+  document.getElementById('task-input').value = '';
+  document.getElementById('time-input').value = '';
+}
+
+// ── Persist tasks locally ──────────────────────────────────────────────────
+function savePendingTask(task, display12, calUrl) {
+  const stored = JSON.parse(localStorage.getItem(TASKS_LS) || '[]');
+  const today = new Date().toISOString().substring(0,10);
+  // keep only today's tasks
+  const todayTasks = stored.filter(t => t.date === today);
+  todayTasks.unshift({ name: task.name, time: display12, calUrl, date: today, reasoning: task.reasoning });
+  localStorage.setItem(TASKS_LS, JSON.stringify(todayTasks));
+  renderTasks();
+}
+
+function renderTasks() {
+  const today = new Date().toISOString().substring(0,10);
+  const stored = JSON.parse(localStorage.getItem(TASKS_LS) || '[]');
+  const todayTasks = stored.filter(t => t.date === today);
+  const list = document.getElementById('tasks-list');
+  const heading = document.getElementById('tasks-heading');
+
+  if (!todayTasks.length) {
+    heading.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  heading.style.display = 'block';
+  list.innerHTML = todayTasks.map(t => `
+    <div class="task-item">
+      <div class="task-dot"></div>
+      <div class="task-info">
+        <div class="task-name">${escHtml(t.name)}</div>
+        <div class="task-meta">${t.time} · ${escHtml(t.reasoning.substring(0,80))}…</div>
+      </div>
+      <a class="task-cal-link" href="${t.calUrl}" target="_blank">+ Cal</a>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+renderTasks();
+</script>
+</body>
+</html>
