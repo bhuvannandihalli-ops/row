@@ -23,7 +23,7 @@
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;
-  background: #050506;
+  background: #060a1c;
   color: var(--text-secondary);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -579,6 +579,40 @@ body::after {
   border-color: rgba(255,255,255,0.18);
 }
 
+.gm-schedule {
+  padding: 11px 14px;
+  border: 1px solid rgba(110,231,183,0.25);
+  border-radius: 12px;
+  background: rgba(110,231,183,0.06);
+  color: #6EE7B7;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.gm-schedule:hover { background: rgba(110,231,183,0.12); border-color: rgba(110,231,183,0.4); }
+.gm-schedule:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.schedule-result {
+  flex-basis: 100%;
+  display: none;
+  background: rgba(110,231,183,0.06);
+  border: 1px solid rgba(110,231,183,0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+.schedule-result.visible { display: block; }
+.sr-time { font-size: 13px; font-weight: 700; color: #6EE7B7; margin-bottom: 4px; }
+.sr-reason { font-size: 12px; color: var(--text-tertiary); margin-bottom: 10px; line-height: 1.5; }
+.sr-cal-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px;
+  background: rgba(110,231,183,0.1); border: 1px solid rgba(110,231,183,0.25);
+  color: #6EE7B7; font-size: 12px; font-weight: 600;
+  text-decoration: none; cursor: pointer;
+}
+
 .gm-status {
   flex-basis: 100%;
   font-size: 11px;
@@ -667,7 +701,13 @@ body::after {
         <input id="goalInput" class="gm-input" type="text" placeholder="Add a goal for today…" autocomplete="off">
         <button type="button" id="goalAddBtn"    class="gm-add">+ Add</button>
         <button type="button" id="goalPolishBtn" class="gm-polish">✨ Polish</button>
+        <button type="button" id="goalScheduleBtn" class="gm-schedule">📅 Schedule</button>
         <div class="gm-status" id="polishStatus"></div>
+        <div class="schedule-result" id="scheduleResult">
+          <div class="sr-time" id="srTime"></div>
+          <div class="sr-reason" id="srReason"></div>
+          <a class="sr-cal-btn" id="srCalBtn" href="#" download="">📅 Add to Calendar</a>
+        </div>
       </div>
     </div>
 
@@ -1273,6 +1313,99 @@ body::after {
       }
     });
   }
+
+  // ---------- Schedule with AI ----------
+  const SUPABASE_URL_M = 'https://szelyvlqzruwnwhnuchb.supabase.co';
+  const ANON_KEY_M     = 'sb_publishable_G-znLn3MKl9EIK6w4jL3LQ_811bZKzz';
+
+  function makeIcsMain(name, h, m, reason) {
+    const now = new Date();
+    const y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
+    const hh = String(h).padStart(2,'0'), mm = String(m).padStart(2,'0'), eh = String((h+1)%24).padStart(2,'0');
+    return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Row//EN','BEGIN:VEVENT',
+      `UID:${Date.now()}@row`,`DTSTART:${y}${mo}${d}T${hh}${mm}00`,`DTEND:${y}${mo}${d}T${eh}${mm}00`,
+      `SUMMARY:${name}`,`DESCRIPTION:${reason.replace(/\n/g,'\\n')}`,
+      'END:VEVENT','END:VCALENDAR'].join('\r\n');
+  }
+
+  document.getElementById('goalScheduleBtn').addEventListener('click', async () => {
+    const input = document.getElementById('goalInput');
+    const taskName = input.value.trim();
+    if (!taskName) { input.focus(); return; }
+
+    const apiKey = localStorage.getItem('nova_lite_api_key');
+    const btn = document.getElementById('goalScheduleBtn');
+    const result = document.getElementById('scheduleResult');
+
+    btn.disabled = true;
+    btn.textContent = '…';
+    result.classList.remove('visible');
+
+    // First add the goal to the list
+    const list = getGoals(todayKey());
+    list.push({ text: taskName, done: false });
+    setGoals(todayKey(), list);
+    input.value = '';
+    loadToday();
+
+    if (!apiKey) {
+      btn.disabled = false; btn.textContent = '📅 Schedule';
+      showStatus(document.getElementById('polishStatus'), 'Add your Nova API key to enable AI scheduling.', false);
+      return;
+    }
+
+    // Fetch health data
+    let healthSummary = 'No health data available';
+    try {
+      const r = await fetch(`${SUPABASE_URL_M}/rest/v1/health_daily?select=*&order=date.desc&limit=1`,
+        { headers: { apikey: ANON_KEY_M, Authorization: 'Bearer ' + ANON_KEY_M } });
+      const rows = await r.json();
+      if (rows.length) {
+        const d = rows[0];
+        healthSummary = [
+          d.sleep_hours > 0   ? `Sleep: ${Number(d.sleep_hours).toFixed(1)}h` : null,
+          d.resting_hr > 0    ? `Resting HR: ${d.resting_hr}bpm` : null,
+          d.hrv > 0           ? `HRV: ${d.hrv}ms` : null,
+          d.steps > 0         ? `Steps: ${d.steps}` : null,
+          d.active_calories > 0 ? `Calories: ${d.active_calories}kcal` : null,
+          d.exercise_minutes > 0 ? `Exercise: ${d.exercise_minutes}min` : null,
+        ].filter(Boolean).join(', ');
+      }
+    } catch(e) {}
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type':'application/json','x-api-key':apiKey,
+          'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 150,
+          system: 'You are a schedule optimizer. Reply only in the format:\nTIME: HH:MM\nREASON: one sentence',
+          messages: [{ role: 'user', content: `Health stats: ${healthSummary}\nTask: "${taskName}"\nBest time today?` }]
+        })
+      });
+      const json = await res.json();
+      const text = (json.content && json.content[0] && json.content[0].text) || '';
+      const timeMatch   = text.match(/TIME:\s*(\d{1,2}):(\d{2})/);
+      const reasonMatch = text.match(/REASON:\s*(.+)/);
+      if (timeMatch) {
+        const h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+        const disp = `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
+        const reason = reasonMatch ? reasonMatch[1].trim() : '';
+        document.getElementById('srTime').textContent = `Best time: ${disp}`;
+        document.getElementById('srReason').textContent = reason;
+        const ics = makeIcsMain(taskName, h, m, reason);
+        const blob = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+        const calBtn = document.getElementById('srCalBtn');
+        calBtn.href = blob;
+        calBtn.download = taskName.replace(/[^a-z0-9]/gi,'_') + '.ics';
+        result.classList.add('visible');
+      }
+    } catch(e) {
+      showStatus(document.getElementById('polishStatus'), 'AI scheduling failed — goal added as-is.', true);
+    }
+    btn.disabled = false; btn.textContent = '📅 Schedule';
+  });
 
   makeAddHandlers(
     document.getElementById('goalInput'),
