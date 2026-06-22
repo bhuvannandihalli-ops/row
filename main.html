@@ -669,7 +669,7 @@ body::after {
     <div class="day-ring-text">
       <div class="day-ring-status"    id="dayRingStatus">Loading…</div>
       <div class="day-ring-remaining" id="dayRingRemaining">—</div>
-      <div class="day-ring-hours">8:00 AM – 12:00 AM</div>
+      <div class="day-ring-hours" id="dayRingHours">8:00 AM – 12:00 AM</div>
     </div>
   </div>
 
@@ -740,7 +740,7 @@ body::after {
   // Use the same Nova API key stored by nova-lite.html
   const ANTHROPIC_API_KEY = localStorage.getItem('nova_lite_api_key') || '';
 
-  const WAKE_HOUR  = 8;
+  let WAKE_HOUR  = 8;
   const SLEEP_HOUR = 24;
 
   // ---------- storage helpers ----------
@@ -1437,6 +1437,47 @@ body::after {
     document.getElementById('tomorrowStatus'),
     loadTomorrow
   );
+
+  // ---------- Load Apple Health wake time ----------
+  (async function () {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL_M}/rest/v1/health_daily?select=sleep_hours,updated_at,date&order=date.desc&limit=7`,
+        { headers: { apikey: ANON_KEY_M, Authorization: 'Bearer ' + ANON_KEY_M } }
+      );
+      const rows = await res.json();
+      if (!Array.isArray(rows) || !rows.length) return;
+
+      // Average wake hour over recent days to learn schedule
+      const wakeTimes = rows
+        .filter(r => r.updated_at)
+        .map(r => { const t = new Date(r.updated_at); return t.getHours() + t.getMinutes() / 60; })
+        .filter(h => h > 4 && h < 14); // sanity: 4 AM–2 PM
+
+      if (wakeTimes.length) {
+        WAKE_HOUR = wakeTimes.reduce((a, b) => a + b, 0) / wakeTimes.length;
+      }
+
+      // Update the label with today's actual data if available
+      const today = rows[0];
+      const wakeTime = new Date(today.updated_at);
+      const todayStr = new Date().toISOString().substring(0, 10);
+      const hoursEl = document.getElementById('dayRingHours');
+      if (hoursEl) {
+        if (today.date === todayStr) {
+          const wakeStr = wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const sleepStr = today.sleep_hours ? `${Number(today.sleep_hours).toFixed(1)}h sleep` : '';
+          hoursEl.textContent = sleepStr ? `Woke ${wakeStr} · ${sleepStr}` : `Woke ${wakeStr}`;
+        } else {
+          const wh = Math.round(WAKE_HOUR);
+          const wm = Math.round((WAKE_HOUR - wh) * 60);
+          const d = new Date(); d.setHours(wh, wm, 0, 0);
+          hoursEl.textContent = `Avg wake ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · syncing…`;
+        }
+      }
+      updateDayRing();
+    } catch (e) {}
+  })();
 
   // ---------- Boot ----------
   rollover();
