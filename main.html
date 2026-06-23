@@ -623,10 +623,35 @@ body::after {
 }
 .gm-status.gm-status-error { color: var(--danger); }
 
-@media (max-width: 480px) {
-  body { padding: 8px max(14px, env(safe-area-inset-right)) 50px max(14px, env(safe-area-inset-left)); }
-  .gm-card { padding: 16px; }
+@media (max-width: 600px) {
+  body { padding: 8px max(14px, env(safe-area-inset-right)) 60px max(14px, env(safe-area-inset-left)); }
+  .gm-card { padding: 16px 14px; }
   .gm-progress-num { font-size: 36px; }
+
+  /* Larger touch targets + 16px font to prevent iOS zoom */
+  .gm-input { font-size: 16px !important; padding: 13px 42px 13px 14px; border-radius: 14px; }
+  .gm-add, .gm-polish, .gm-schedule {
+    font-size: 14px !important;
+    padding: 13px 16px;
+    border-radius: 14px;
+    min-height: 48px;
+  }
+  .goal-input-wrap.gm-input-wrap { gap: 8px; }
+  .goal-input-wrap.gm-input-wrap .vb-wrap { flex-basis: 100%; }
+
+  /* Goal list items */
+  .goal-item { padding: 13px 12px; gap: 12px; }
+  .goal-item-text { font-size: 14px; }
+  .goal-item-check { width: 22px; height: 22px; flex-shrink: 0; }
+
+  /* Day ring */
+  .day-ring-wrap { gap: 16px; padding: 18px 14px; flex-direction: column; align-items: center; }
+  .day-ring { width: 150px; height: 150px; }
+  .day-ring-percent { font-size: 34px; }
+  .day-ring-text { max-width: 100%; text-align: center; }
+
+  /* Sleep toggle */
+  #sleepToggleBtn { font-size: 13px; padding: 8px 18px; }
 }
 </style>
 </head>
@@ -964,6 +989,16 @@ body::after {
   // Set to true once today's health sync is confirmed (alarm was dismissed)
   let alarmDismissedToday = false;
 
+  // Auto-clear sleep_mode if it was set on a previous day
+  (function clearStaleSleepMode() {
+    const storedDay = localStorage.getItem('sleep_mode_date');
+    const todayStr  = new Date().toISOString().substring(0, 10);
+    if (storedDay && storedDay !== todayStr) {
+      localStorage.removeItem('sleep_mode');
+      localStorage.removeItem('sleep_mode_date');
+    }
+  })();
+
   // Sleep toggle button
   (function initSleepToggle() {
     const btn = document.getElementById('sleepToggleBtn');
@@ -978,8 +1013,10 @@ body::after {
       const sleeping = localStorage.getItem('sleep_mode') === 'true';
       if (sleeping) {
         localStorage.removeItem('sleep_mode');
+        localStorage.removeItem('sleep_mode_date');
       } else {
         localStorage.setItem('sleep_mode', 'true');
+        localStorage.setItem('sleep_mode_date', new Date().toISOString().substring(0, 10));
       }
       refreshBtn();
       updateDayRing();
@@ -1278,30 +1315,44 @@ body::after {
     el._t = setTimeout(() => { el.textContent = ''; el.classList.remove('gm-status-error'); }, 3500);
   }
 
-  async function polishOne(text) {
+  function buildGCalUrl(text, h, m) {
+    const now = new Date();
+    const y = now.getFullYear(), mo = pad2(now.getMonth()+1), dd = pad2(now.getDate());
+    if (h != null && m != null) {
+      const eh = pad2((h+1) % 24);
+      return 'https://calendar.google.com/calendar/r/eventedit?text=' + encodeURIComponent(text) +
+             '&dates=' + y+mo+dd+'T'+pad2(h)+pad2(m)+'00/'+y+mo+dd+'T'+eh+pad2(m)+'00';
+    }
+    // All-day task (no time specified)
+    const nxt = new Date(now.getTime() + 86400000);
+    const ny = nxt.getFullYear(), nm = pad2(nxt.getMonth()+1), nd = pad2(nxt.getDate());
+    return 'https://calendar.google.com/calendar/r/eventedit?text=' + encodeURIComponent(text) +
+           '&dates=' + y+mo+dd+'/'+ny+nm+nd;
+  }
+
+  async function polishOne(text, apiKey) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
         messages: [{
           role: 'user',
-          content:
-            'Rewrite this single goal so it is concrete, action-oriented, and under 60 characters. ' +
-            'Return ONLY a JSON array with exactly one string, no preamble, no code fences.\n\nGoal: ' + text
+          content: 'Rewrite this goal to be concrete and action-oriented, under 60 characters. ' +
+                   'Return ONLY a JSON array with exactly one string.\n\nGoal: ' + text
         }]
       })
     });
     const data = await res.json();
     const content = (data && data.content && data.content[0] && data.content[0].text) || '';
     const arr = JSON.parse(content);
-    if (!Array.isArray(arr) || arr.length < 1 || typeof arr[0] !== 'string') throw new Error('bad response');
+    if (!Array.isArray(arr) || !arr[0]) throw new Error('bad response');
     return arr[0].trim();
   }
 
@@ -1313,31 +1364,48 @@ body::after {
       input.value = '';
       reload();
     }
+
+    // + Add: always opens Google Calendar as all-day task
     addBtn.addEventListener('click', () => {
       const text = input.value.trim();
       if (!text) return;
+      window.open(buildGCalUrl(text), '_blank'); // sync in click handler — no popup block
       plainAdd(text);
     });
+
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
     });
+
+    // ✨ Polish: open window now (sync), polish text, then redirect window to GCal
     polishBtn.addEventListener('click', async () => {
       const text = input.value.trim();
       if (!text) return;
-      if (!ANTHROPIC_API_KEY) {
+      const apiKey = localStorage.getItem('nova_lite_api_key') || '';
+
+      // Must open synchronously during click to bypass popup blocker
+      const calWin = window.open('', '_blank');
+
+      if (!apiKey) {
+        if (calWin) calWin.location = buildGCalUrl(text);
         plainAdd(text);
-        showStatus(statusEl, 'Polish needs an Anthropic API key — added as-typed.', false);
+        showStatus(statusEl, 'Nova API key not set — added as-typed. Set it in Nova chat.', false);
         return;
       }
+
       polishBtn.disabled = true;
+      polishBtn.textContent = '…';
       try {
-        const polished = await polishOne(text);
+        const polished = await polishOne(text, apiKey);
+        if (calWin) calWin.location = buildGCalUrl(polished);
         plainAdd(polished);
       } catch (e) {
+        if (calWin) calWin.location = buildGCalUrl(text);
         plainAdd(text);
         showStatus(statusEl, 'Polish failed — added as-typed.', true);
       } finally {
         polishBtn.disabled = false;
+        polishBtn.textContent = '✨ Polish';
       }
     });
   }
@@ -1381,7 +1449,10 @@ body::after {
 
     if (!apiKey) {
       btn.disabled = false; btn.textContent = '📅 Schedule';
-      showStatus(document.getElementById('polishStatus'), 'Add your Nova API key to enable AI scheduling.', false);
+      // No AI key — open Google Calendar as all-day task
+      if (calWin) calWin.location = buildGCalUrl(taskName);
+      else window.open(buildGCalUrl(taskName), '_blank');
+      showStatus(document.getElementById('polishStatus'), 'Nova key not set — added to calendar as all-day task.', false);
       return;
     }
 
@@ -1430,7 +1501,7 @@ body::after {
         const now = new Date();
         const y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
         const hh = String(h).padStart(2,'0'), mm2 = String(m).padStart(2,'0'), eh = String((h+1)%24).padStart(2,'0');
-        const gcalUrl = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(taskName)}&dates=${y}${mo}${dd}T${hh}${mm2}00/${y}${mo}${dd}T${eh}${mm2}00&details=${encodeURIComponent(reason)}`;
+        const gcalUrl = buildGCalUrl(taskName, h, m) + '&details=' + encodeURIComponent(reason);
         if (calWin) calWin.location = gcalUrl;
 
         // Also show inline result with calendar link as fallback
