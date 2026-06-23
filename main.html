@@ -19,6 +19,10 @@
   --danger: #FF6B6B;
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-card: 22px;
+  --radius-btn: 14px;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * { box-sizing: border-box; }
@@ -41,12 +45,13 @@ body::before {
   content: '';
   position: fixed; inset: 0;
   background:
-    radial-gradient(circle at 82% 14%, rgba(224, 118, 88, 0.16), transparent 45%),
-    radial-gradient(circle at 18% 90%, rgba(180, 180, 200, 0.06), transparent 50%);
-  filter: blur(40px);
+    radial-gradient(ellipse at 78% 8%,  rgba(130, 80, 255, 0.14), transparent 42%),
+    radial-gradient(ellipse at 18% 85%, rgba(60, 130, 255, 0.11), transparent 45%),
+    radial-gradient(ellipse at 55% 55%, rgba(255, 120, 70, 0.07), transparent 52%);
+  filter: blur(52px);
   pointer-events: none;
   z-index: -2;
-  animation: drift 36s ease-in-out infinite alternate;
+  animation: drift 38s ease-in-out infinite alternate;
 }
 body::after {
   content: '';
@@ -177,11 +182,12 @@ body::after {
   gap: 26px;
   padding: 22px;
   margin-bottom: 22px;
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
   box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.07);
 }
 .day-ring {
   position: relative;
@@ -547,7 +553,11 @@ body::after {
   transition: border-color 0.2s, background 0.2s;
 }
 .gm-input::placeholder { color: var(--text-tertiary); }
-.gm-input:focus { border-color: rgba(255,255,255,0.28); background: rgba(0,0,0,0.36); }
+.gm-input:focus {
+  border-color: rgba(130,80,255,0.5);
+  background: rgba(0,0,0,0.38);
+  box-shadow: 0 0 0 3px rgba(130,80,255,0.12);
+}
 
 .gm-add {
   padding: 11px 20px;
@@ -562,8 +572,8 @@ body::after {
     0 8px 22px rgba(0,0,0,0.25);
   transition: transform 0.1s, filter 0.15s;
 }
-.gm-add:hover { filter: brightness(1.06); transform: translateY(-1px); }
-.gm-add:active { transform: translateY(0); }
+.gm-add:hover  { filter: brightness(1.07); transform: translateY(-1px); }
+.gm-add:active { transform: scale(0.94); filter: brightness(0.95); }
 
 .gm-polish {
   padding: 11px 18px;
@@ -579,6 +589,8 @@ body::after {
   background: rgba(255,255,255,0.07);
   border-color: rgba(255,255,255,0.18);
 }
+.gm-polish:active { transform: scale(0.94); }
+.gm-schedule:active { transform: scale(0.94); }
 
 .gm-schedule {
   padding: 11px 14px;
@@ -622,6 +634,13 @@ body::after {
   margin-top: 4px;
 }
 .gm-status.gm-status-error { color: var(--danger); }
+.gm-cal-link {
+  color: #6EE7B7;
+  text-decoration: none;
+  font-weight: 700;
+  margin-left: 2px;
+}
+.gm-cal-link:hover { text-decoration: underline; }
 
 @media (max-width: 600px) {
   body { padding: 8px max(14px, env(safe-area-inset-right)) 60px max(14px, env(safe-area-inset-left)); }
@@ -653,6 +672,116 @@ body::after {
   /* Sleep toggle */
   #sleepToggleBtn { font-size: 13px; padding: 8px 18px; }
 }
+
+/* ===== Morning Check-in Modal ===== */
+.mm-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(4,4,14,0.75);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: flex; align-items: flex-end; justify-content: center;
+  transition: opacity 0.28s ease;
+}
+.mm-overlay.mm-hidden { opacity: 0; pointer-events: none; }
+.mm-sheet {
+  width: 100%; max-width: 520px;
+  background: linear-gradient(180deg, #1a1b30 0%, #10111f 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 28px 28px 0 0;
+  padding: 32px 26px max(40px, env(safe-area-inset-bottom)) 26px;
+  position: relative;
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  max-height: 92vh; overflow-y: auto;
+}
+.mm-overlay:not(.mm-hidden) .mm-sheet { transform: translateY(0); }
+.mm-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.45); font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.18s, color 0.18s;
+}
+.mm-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.mm-step { display: none; }
+.mm-step.active { display: block; animation: mm-in 0.32s cubic-bezier(0.22,1,0.36,1); }
+@keyframes mm-in { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+.mm-hero-emoji { font-size: 54px; text-align: center; line-height: 1; margin-bottom: 14px; }
+.mm-greeting { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: #FAFAFA; text-align: center; margin: 0 0 6px; }
+.mm-subline { font-size: 14px; color: rgba(255,255,255,0.38); text-align: center; margin-bottom: 26px; }
+.mm-metrics-row { display: flex; gap: 10px; margin-bottom: 28px; }
+.mm-metric { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 10px; text-align: center; }
+.mm-metric-val { font-size: 20px; font-weight: 800; color: #FAFAFA; letter-spacing: -0.03em; }
+.mm-metric-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.32); margin-top: 4px; }
+.mm-primary-btn {
+  display: block; width: 100%; padding: 15px; border-radius: 16px; border: none;
+  background: linear-gradient(180deg, #7C5CFF 0%, #5A3ED4 100%);
+  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+  box-shadow: 0 6px 22px rgba(100,70,255,0.32);
+  transition: filter 0.18s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  margin-top: 10px; text-align: center;
+}
+.mm-primary-btn:hover { filter: brightness(1.1); }
+.mm-primary-btn:active { transform: scale(0.95); }
+.mm-primary-btn:disabled { opacity: 0.38; pointer-events: none; }
+.mm-ai-btn { background: linear-gradient(180deg, #2DD4A0 0%, #1BAF82 100%); box-shadow: 0 6px 22px rgba(45,212,160,0.28); }
+.mm-q { font-size: 19px; font-weight: 800; letter-spacing: -0.025em; color: #FAFAFA; margin: 0 0 18px; }
+.mm-energy-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.mm-energy-btn {
+  flex: 1; aspect-ratio: 1/1; border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  font-size: 26px; cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.18s, background 0.18s;
+  display: flex; align-items: center; justify-content: center;
+}
+.mm-energy-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.06); }
+.mm-energy-btn.mm-sel { border-color: #7C5CFF; background: rgba(124,92,255,0.18); transform: scale(1.12); }
+.mm-coffee-row { display: flex; gap: 9px; margin-bottom: 26px; }
+.mm-coffee-btn {
+  flex: 1; padding: 12px 8px; border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  color: #B8B6B0; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+.mm-coffee-btn.mm-sel { border-color: #F2C063; background: rgba(242,192,99,0.14); color: #F2C063; }
+.mm-quick-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.mm-quick-btn {
+  padding: 9px 13px; border-radius: 11px;
+  border: 1.5px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+  color: #C0BEB8; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.2s;
+}
+.mm-quick-btn:hover { background: rgba(255,255,255,0.08); }
+.mm-quick-btn.mm-sel { border-color: #6EE7B7; background: rgba(110,231,183,0.13); color: #6EE7B7; transform: scale(1.04); }
+.mm-textarea {
+  width: 100%; padding: 13px 14px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.28);
+  color: #FAFAFA; font-size: 15px; font-family: inherit;
+  resize: none; outline: none; display: block; box-sizing: border-box;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.mm-textarea:focus { border-color: rgba(124,92,255,0.5); box-shadow: 0 0 0 3px rgba(124,92,255,0.12); }
+.mm-loading-wrap { display: flex; flex-direction: column; align-items: center; padding: 44px 0; gap: 18px; }
+.mm-spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(124,92,255,0.2); border-top-color: #7C5CFF; animation: mm-spin 0.75s linear infinite; }
+@keyframes mm-spin { to { transform: rotate(360deg); } }
+.mm-loading-txt { color: rgba(255,255,255,0.45); font-size: 14px; font-weight: 600; }
+.mm-result-hdr { font-size: 19px; font-weight: 800; color: #FAFAFA; margin-bottom: 18px; letter-spacing: -0.025em; }
+.mm-timeline { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
+.mm-event { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border-radius: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+.mm-event-coffee { border-color: rgba(242,192,99,0.2); background: rgba(242,192,99,0.05); }
+.mm-event-time { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #7C5CFF; min-width: 48px; padding-top: 2px; }
+.mm-event-coffee .mm-event-time { color: #F2C063; }
+.mm-event-body { flex: 1; min-width: 0; }
+.mm-event-name { font-size: 14px; font-weight: 700; color: #FAFAFA; margin-bottom: 3px; }
+.mm-event-why { font-size: 12px; color: rgba(255,255,255,0.42); line-height: 1.45; margin-bottom: 8px; }
+.mm-event-cal {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 8px;
+  background: rgba(110,231,183,0.08); border: 1px solid rgba(110,231,183,0.2);
+  color: #6EE7B7; font-size: 11px; font-weight: 600; text-decoration: none;
+  transition: background 0.15s;
+}
+.mm-event-cal:hover { background: rgba(110,231,183,0.16); }
 </style>
 </head>
 <body>
@@ -1315,6 +1444,13 @@ body::after {
     el._t = setTimeout(() => { el.textContent = ''; el.classList.remove('gm-status-error'); }, 3500);
   }
 
+  function showStatusHtml(el, html, isError) {
+    el.innerHTML = html;
+    el.classList.toggle('gm-status-error', !!isError);
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.innerHTML = ''; el.classList.remove('gm-status-error'); }, 9000);
+  }
+
   function buildGCalUrl(text, h, m) {
     const now = new Date();
     const y = now.getFullYear(), mo = pad2(now.getMonth()+1), dd = pad2(now.getDate());
@@ -1356,6 +1492,10 @@ body::after {
     return arr[0].trim();
   }
 
+  function calLink(url) {
+    return ' <a class="gm-cal-link" href="' + url + '" target="_blank" rel="noopener noreferrer">📅 Calendar</a>';
+  }
+
   function makeAddHandlers(input, addBtn, polishBtn, key, statusEl, reload) {
     function plainAdd(text) {
       const list = getGoals(key);
@@ -1365,31 +1505,25 @@ body::after {
       reload();
     }
 
-    // + Add: always opens Google Calendar as all-day task
     addBtn.addEventListener('click', () => {
       const text = input.value.trim();
       if (!text) return;
-      window.open(buildGCalUrl(text), '_blank'); // sync in click handler — no popup block
       plainAdd(text);
+      showStatusHtml(statusEl, '✓ Added' + calLink(buildGCalUrl(text)), false);
     });
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
     });
 
-    // ✨ Polish: open window now (sync), polish text, then redirect window to GCal
     polishBtn.addEventListener('click', async () => {
       const text = input.value.trim();
       if (!text) return;
       const apiKey = localStorage.getItem('nova_lite_api_key') || '';
 
-      // Must open synchronously during click to bypass popup blocker
-      const calWin = window.open('', '_blank');
-
       if (!apiKey) {
-        if (calWin) calWin.location = buildGCalUrl(text);
         plainAdd(text);
-        showStatus(statusEl, 'Nova API key not set — added as-typed. Set it in Nova chat.', false);
+        showStatusHtml(statusEl, '✓ Added (set Nova key to enable Polish)' + calLink(buildGCalUrl(text)), false);
         return;
       }
 
@@ -1397,12 +1531,11 @@ body::after {
       polishBtn.textContent = '…';
       try {
         const polished = await polishOne(text, apiKey);
-        if (calWin) calWin.location = buildGCalUrl(polished);
         plainAdd(polished);
+        showStatusHtml(statusEl, '✨ Polished & added' + calLink(buildGCalUrl(polished)), false);
       } catch (e) {
-        if (calWin) calWin.location = buildGCalUrl(text);
         plainAdd(text);
-        showStatus(statusEl, 'Polish failed — added as-typed.', true);
+        showStatusHtml(statusEl, '✓ Added (polish failed)' + calLink(buildGCalUrl(text)), true);
       } finally {
         polishBtn.disabled = false;
         polishBtn.textContent = '✨ Polish';
@@ -1433,9 +1566,6 @@ body::after {
     const btn = document.getElementById('goalScheduleBtn');
     const result = document.getElementById('scheduleResult');
 
-    // Open a new tab NOW (must be synchronous during click to avoid popup blocker)
-    const calWin = apiKey ? window.open('', '_blank') : null;
-
     btn.disabled = true;
     btn.textContent = '…';
     result.classList.remove('visible');
@@ -1449,10 +1579,7 @@ body::after {
 
     if (!apiKey) {
       btn.disabled = false; btn.textContent = '📅 Schedule';
-      // No AI key — open Google Calendar as all-day task
-      if (calWin) calWin.location = buildGCalUrl(taskName);
-      else window.open(buildGCalUrl(taskName), '_blank');
-      showStatus(document.getElementById('polishStatus'), 'Nova key not set — added to calendar as all-day task.', false);
+      showStatusHtml(document.getElementById('polishStatus'), '✓ Added — no Nova key set.' + calLink(buildGCalUrl(taskName)), false);
       return;
     }
 
@@ -1502,7 +1629,7 @@ body::after {
         const y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
         const hh = String(h).padStart(2,'0'), mm2 = String(m).padStart(2,'0'), eh = String((h+1)%24).padStart(2,'0');
         const gcalUrl = buildGCalUrl(taskName, h, m) + '&details=' + encodeURIComponent(reason);
-        if (calWin) calWin.location = gcalUrl;
+        // gcalUrl is shown inline via srCalBtn
 
         // Also show inline result with calendar link as fallback
         const calBtn = document.getElementById('srCalBtn');
@@ -1510,12 +1637,9 @@ body::after {
         calBtn.removeAttribute('download');
         calBtn.target = '_blank';
         result.classList.add('visible');
-      } else if (calWin) {
-        calWin.close();
       }
     } catch(e) {
-      if (calWin) calWin.close();
-      showStatus(document.getElementById('polishStatus'), 'AI scheduling failed — goal added as-is.', true);
+      showStatusHtml(document.getElementById('polishStatus'), '⚠ AI scheduling failed — goal added.' + calLink(buildGCalUrl(taskName)), true);
     }
     btn.disabled = false; btn.textContent = '📅 Schedule';
   });
@@ -1554,6 +1678,7 @@ body::after {
       // If today's health sync exists, alarm was dismissed → they're awake
       if (today.date === todayStr && today.updated_at) {
         alarmDismissedToday = true;
+        if (window._mmOpen && !localStorage.getItem('morning_checkin:' + new Date().toISOString().substring(0,10))) window._mmOpen();
         localStorage.removeItem('sleep_mode'); // clear sleep mode — day has started
         const btn = document.getElementById('sleepToggleBtn');
         if (btn) { btn.textContent = '🌙 Going to sleep'; btn.style.color = '#B8B6B0'; }
@@ -1581,6 +1706,187 @@ body::after {
       }
       updateDayRing();
     } catch (e) {}
+  })();
+
+  // ===== Morning Check-in Modal =====
+  (function initMorningModal() {
+    const overlay = document.getElementById('mmOverlay');
+    if (!overlay) return;
+
+    const todayDateStr = new Date().toISOString().substring(0, 10);
+    function checkinDone() { return localStorage.getItem('morning_checkin:' + todayDateStr) === '1'; }
+    function markCheckinDone() { localStorage.setItem('morning_checkin:' + todayDateStr, '1'); }
+
+    function showStep(id) {
+      document.querySelectorAll('.mm-step').forEach(s => s.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+    }
+
+    function openModal() {
+      overlay.classList.remove('mm-hidden');
+      document.body.style.overflow = 'hidden';
+      loadMMHealth();
+      const d = new Date();
+      const dateEl = document.getElementById('mmDateLine');
+      if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+      const h = d.getHours();
+      const emojiEl = document.getElementById('mmEmoji');
+      if (emojiEl) emojiEl.textContent = h < 10 ? '🌅' : h < 14 ? '☀️' : '🌇';
+      const greetEl = document.getElementById('mmGreeting');
+      if (greetEl) greetEl.textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Bhuvan';
+    }
+
+    function closeModal() {
+      overlay.classList.add('mm-hidden');
+      document.body.style.overflow = '';
+      markCheckinDone();
+    }
+
+    document.getElementById('mmClose').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    async function loadMMHealth() {
+      try {
+        const r = await fetch(SUPABASE_URL_M + '/rest/v1/health_daily?select=sleep_hours,resting_hr,hrv&order=date.desc&limit=1',
+          { headers: { apikey: ANON_KEY_M, Authorization: 'Bearer ' + ANON_KEY_M } });
+        const rows = await r.json();
+        if (!rows || !rows.length) return;
+        const d = rows[0];
+        const sleepEl = document.getElementById('mmSleep');
+        const rhrEl   = document.getElementById('mmRHR');
+        const hrvEl   = document.getElementById('mmHRV');
+        if (sleepEl && d.sleep_hours > 0) sleepEl.textContent = Number(d.sleep_hours).toFixed(1) + 'h';
+        if (rhrEl   && d.resting_hr > 0)  rhrEl.textContent   = Math.round(d.resting_hr) + ' bpm';
+        if (hrvEl   && d.hrv > 0)         hrvEl.textContent   = Math.round(d.hrv) + ' ms';
+      } catch(_) {}
+    }
+
+    document.getElementById('mmNext1').addEventListener('click', () => showStep('mmS2'));
+
+    let energyLevel = 0;
+    document.querySelectorAll('.mm-energy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mm-energy-btn').forEach(b => b.classList.remove('mm-sel'));
+        btn.classList.add('mm-sel');
+        energyLevel = parseInt(btn.dataset.level);
+        document.getElementById('mmNext2').disabled = false;
+      });
+    });
+
+    let coffeeCount = 1;
+    document.querySelectorAll('.mm-coffee-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mm-coffee-btn').forEach(b => b.classList.remove('mm-sel'));
+        btn.classList.add('mm-sel');
+        coffeeCount = parseInt(btn.dataset.n);
+      });
+    });
+
+    document.getElementById('mmNext2').addEventListener('click', () => showStep('mmS3'));
+
+    const selectedTasks = new Set();
+    document.querySelectorAll('.mm-quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const task = btn.dataset.task;
+        if (selectedTasks.has(task)) { selectedTasks.delete(task); btn.classList.remove('mm-sel'); }
+        else { selectedTasks.add(task); btn.classList.add('mm-sel'); }
+      });
+    });
+
+    document.getElementById('mmGenBtn').addEventListener('click', async () => {
+      showStep('mmS4');
+      document.getElementById('mmLoading').style.display = 'flex';
+      document.getElementById('mmResult').style.display   = 'none';
+
+      const extra = (document.getElementById('mmExtra') || {}).value || '';
+      const tasks = [...selectedTasks];
+      extra.split(/[,\n]+/).map(s => s.trim()).filter(Boolean).forEach(t => tasks.push(t));
+      if (!tasks.length) tasks.push('Plan the day');
+
+      const energyLabels = ['','Drained','Low','OK','Good','Peak'];
+      const sleepEl = document.getElementById('mmSleep'), rhrEl = document.getElementById('mmRHR'), hrvEl = document.getElementById('mmHRV');
+      const healthParts = [];
+      if (sleepEl && sleepEl.textContent !== '—') healthParts.push('Sleep: ' + sleepEl.textContent);
+      if (rhrEl   && rhrEl.textContent   !== '—') healthParts.push('Resting HR: ' + rhrEl.textContent);
+      if (hrvEl   && hrvEl.textContent   !== '—') healthParts.push('HRV: ' + hrvEl.textContent);
+      const healthSummary = healthParts.join(', ') || 'No health data';
+
+      const nowStr = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      const prompt = 'Create a realistic daily schedule. User woke around ' + nowStr + '. Health: ' + healthSummary +
+        '. Energy: ' + energyLevel + '/5 (' + (energyLabels[energyLevel]||'unknown') + '). Coffees today: ' + coffeeCount +
+        (coffeeCount > 0 ? ' — include optimal coffee time(s) based on health data. First coffee should be 90+ min after waking.' : '') +
+        ' Tasks: ' + tasks.join(', ') + '.' +
+        ' Return ONLY a valid JSON array, no markdown. Each item: {"time":"HH:MM","label":"name","why":"one sentence","coffee":true or false}. Use 24h time.';
+
+      const apiKey = localStorage.getItem('nova_lite_api_key');
+
+      if (!apiKey) {
+        renderMMSchedule(makeDefaultSchedule(tasks), tasks);
+        return;
+      }
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+          body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:700, messages:[{role:'user',content:prompt}] })
+        });
+        const json = await res.json();
+        const raw  = (json.content && json.content[0] && json.content[0].text) || '';
+        const clean = raw.replace(/```[a-z]*\n?/gi,'').trim();
+        renderMMSchedule(JSON.parse(clean), tasks);
+      } catch(e) {
+        renderMMSchedule(makeDefaultSchedule(tasks), tasks);
+      }
+    });
+
+    function makeDefaultSchedule(tasks) {
+      const now = new Date(); let h = now.getHours(); const items = [];
+      if (coffeeCount > 0) { h += 1; items.push({time:pad2(h)+':30',label:'First coffee ☕',why:'90 min after waking — cortisol has peaked',coffee:true}); }
+      tasks.forEach((t,i) => { h += 1; items.push({time:pad2(Math.min(h,22))+':00',label:t,why:'Scheduled for today',coffee:false}); });
+      if (coffeeCount > 1) items.push({time:'13:30',label:'Second coffee ☕',why:'Before 2 PM to avoid sleep disruption',coffee:true});
+      return items;
+    }
+
+    function renderMMSchedule(schedule, tasks) {
+      document.getElementById('mmLoading').style.display = 'none';
+      document.getElementById('mmResult').style.display  = 'block';
+      const timeline = document.getElementById('mmTimeline');
+      timeline.innerHTML = '';
+      const today = new Date();
+      const y = today.getFullYear(), mo = pad2(today.getMonth()+1), dd = pad2(today.getDate());
+
+      schedule.forEach(ev => {
+        const parts = (ev.time || '09:00').split(':');
+        const h = parseInt(parts[0])||9, m = parseInt(parts[1])||0;
+        const disp = (h%12||12)+':'+pad2(m)+' '+(h<12?'AM':'PM');
+        const eh = (h+1)%24;
+        const gcalUrl = 'https://calendar.google.com/calendar/r/eventedit?text=' + encodeURIComponent(ev.label) +
+          '&dates=' + y+mo+dd+'T'+pad2(h)+pad2(m)+'00/'+y+mo+dd+'T'+pad2(eh)+pad2(m)+'00';
+        const div = document.createElement('div');
+        div.className = 'mm-event' + (ev.coffee ? ' mm-event-coffee' : '');
+        div.innerHTML = '<div class="mm-event-time">'+disp+'</div><div class="mm-event-body"><div class="mm-event-name">'+ev.label+'</div><div class="mm-event-why">'+(ev.why||'')+'</div><a class="mm-event-cal" href="'+gcalUrl+'" target="_blank" rel="noopener noreferrer">📅 Add to Calendar</a></div>';
+        timeline.appendChild(div);
+      });
+
+      // Add tasks to today's goal list
+      const nonCoffeeTasks = tasks.filter(t => !t.toLowerCase().includes('coffee'));
+      const existing = getGoals(todayKey());
+      const existingSet = new Set(existing.map(g => g.text));
+      nonCoffeeTasks.forEach(t => { if (!existingSet.has(t)) existing.push({text:t, done:false}); });
+      setGoals(todayKey(), existing);
+      loadToday();
+    }
+
+    document.getElementById('mmStartDay').addEventListener('click', closeModal);
+
+    // Auto-show: mornings only, once per day, with delay
+    window._mmOpen = openModal;
+    const hh = new Date().getHours();
+    if (!checkinDone() && hh >= 4 && hh < 14) {
+      setTimeout(() => { if (!checkinDone()) openModal(); }, 2000);
+    }
   })();
 
   // ---------- Boot ----------
@@ -1612,5 +1918,67 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+<!-- ===== Morning Check-in Modal ===== -->
+<div id="mmOverlay" class="mm-overlay mm-hidden" role="dialog" aria-modal="true">
+  <div class="mm-sheet">
+    <button class="mm-close" id="mmClose" aria-label="Skip for now">✕</button>
+    <!-- Step 1: Good Morning -->
+    <div class="mm-step active" id="mmS1">
+      <div class="mm-hero-emoji" id="mmEmoji">🌅</div>
+      <h2 class="mm-greeting" id="mmGreeting">Good morning, Bhuvan</h2>
+      <div class="mm-subline" id="mmDateLine"></div>
+      <div class="mm-metrics-row">
+        <div class="mm-metric"><div class="mm-metric-val" id="mmSleep">—</div><div class="mm-metric-lbl">sleep</div></div>
+        <div class="mm-metric"><div class="mm-metric-val" id="mmRHR">—</div><div class="mm-metric-lbl">resting HR</div></div>
+        <div class="mm-metric"><div class="mm-metric-val" id="mmHRV">—</div><div class="mm-metric-lbl">HRV</div></div>
+      </div>
+      <button class="mm-primary-btn" id="mmNext1">Plan my day →</button>
+    </div>
+    <!-- Step 2: Energy + Coffee -->
+    <div class="mm-step" id="mmS2">
+      <h2 class="mm-q">How's your energy?</h2>
+      <div class="mm-energy-row">
+        <button class="mm-energy-btn" data-level="1">😴</button>
+        <button class="mm-energy-btn" data-level="2">😑</button>
+        <button class="mm-energy-btn" data-level="3">😊</button>
+        <button class="mm-energy-btn" data-level="4">⚡</button>
+        <button class="mm-energy-btn" data-level="5">🔥</button>
+      </div>
+      <h2 class="mm-q" style="margin-top:26px">Coffees today?</h2>
+      <div class="mm-coffee-row">
+        <button class="mm-coffee-btn" data-n="0">None</button>
+        <button class="mm-coffee-btn mm-sel" data-n="1">☕ 1</button>
+        <button class="mm-coffee-btn" data-n="2">☕☕ 2</button>
+      </div>
+      <button class="mm-primary-btn" id="mmNext2" disabled>Next →</button>
+    </div>
+    <!-- Step 3: Tasks -->
+    <div class="mm-step" id="mmS3">
+      <h2 class="mm-q">What's the plan today?</h2>
+      <div class="mm-quick-row">
+        <button class="mm-quick-btn" data-task="Gym session">🏋️ Gym</button>
+        <button class="mm-quick-btn" data-task="Morning walk">🚶 Walk</button>
+        <button class="mm-quick-btn" data-task="Meditation">🧘 Meditate</button>
+        <button class="mm-quick-btn" data-task="Read 30 min">📚 Read</button>
+        <button class="mm-quick-btn" data-task="Deep work block">💻 Deep work</button>
+        <button class="mm-quick-btn" data-task="Stretching">🤸 Stretch</button>
+      </div>
+      <textarea id="mmExtra" class="mm-textarea" placeholder="Anything else? (meetings, errands, calls…)" rows="2"></textarea>
+      <button class="mm-primary-btn mm-ai-btn" id="mmGenBtn">✨ Generate my schedule</button>
+    </div>
+    <!-- Step 4: AI Result -->
+    <div class="mm-step" id="mmS4">
+      <div class="mm-loading-wrap" id="mmLoading">
+        <div class="mm-spinner"></div>
+        <div class="mm-loading-txt">Designing your day…</div>
+      </div>
+      <div id="mmResult" style="display:none">
+        <div class="mm-result-hdr">✨ Your day plan</div>
+        <div class="mm-timeline" id="mmTimeline"></div>
+        <button class="mm-primary-btn" id="mmStartDay">Start my day →</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
