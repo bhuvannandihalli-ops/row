@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0b">
 <title>Progressive Overload Coach</title>
 <script src="topbar.js" defer></script>
+<script src="voice.js" defer></script>
 
 <!-- =============================================================
      EDIT THIS BLOCK TO MAKE THE APP YOURS.
@@ -93,8 +94,8 @@ const CONFIG = {
 
 <style>
 :root {
-  --bg: #0a0a0b;
-  --bg-card: #111113;
+  --bg: #060a1c;
+  --bg-card: #0c1030;
   --text-1: #ffffff;
   --text-2: rgba(255,255,255,0.6);
   --text-3: rgba(255,255,255,0.4);
@@ -111,7 +112,7 @@ const CONFIG = {
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, #14141a 0%, #0a0a0b 60%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #0c1030 0%, #060a1c 60%);
   color: var(--text-1);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -1262,6 +1263,121 @@ img, video, canvas, svg { max-width: 100%; }
 }
 
 .hidden { display: none !important; }
+
+/* ============================================================
+   NOVA CHAT SHEET — slide-up AI chat panel with gym awareness
+   ============================================================ */
+.wt-top-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.wt-top-row .wt-row { margin-bottom:0; flex-shrink:0; }
+
+.nova-gym-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(110,231,183,0.07); border:1px solid rgba(110,231,183,0.18);
+  border-radius:12px; padding:9px 14px; cursor:pointer; color:var(--good);
+  font-family:inherit; font-size:13px; font-weight:600; flex-shrink:0;
+  transition:background .2s,border-color .2s; -webkit-tap-highlight-color:transparent;
+}
+.nova-gym-btn:hover { background:rgba(110,231,183,0.15); border-color:rgba(110,231,183,0.40); }
+.nova-gym-orb {
+  width:22px; height:22px; border-radius:50%; flex-shrink:0;
+  background:radial-gradient(circle at 32% 28%,var(--ng-hi,#eafff6),var(--ng-accent,#6ee7b7) 42%,var(--ng-dk,#1f8f66) 100%);
+  box-shadow:0 0 8px -2px var(--ng-accent,#6ee7b7);
+  animation:ngFloat 4s ease-in-out infinite;
+}
+@keyframes ngFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+
+/* Sheet */
+.nova-sheet {
+  position:fixed; inset:0; z-index:110;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  pointer-events:none;
+}
+.nova-sheet.is-open { pointer-events:auto; }
+.nova-sheet-scrim {
+  position:absolute; inset:0; background:rgba(0,0,0,0); transition:background .35s;
+}
+.nova-sheet.is-open .nova-sheet-scrim { background:rgba(0,0,0,0.58); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.nova-sheet-card {
+  position:relative; z-index:1; width:100%; max-width:560px;
+  background:#0d0d12; border-top:1px solid rgba(255,255,255,0.10);
+  border-radius:24px 24px 0 0;
+  display:flex; flex-direction:column; max-height:82vh;
+  transform:translateY(100%); transition:transform .36s cubic-bezier(0.32,0.72,0,1);
+  box-shadow:0 -24px 70px rgba(0,0,0,0.75);
+  padding-bottom:calc(12px + env(safe-area-inset-bottom));
+}
+.nova-sheet.is-open .nova-sheet-card { transform:translateY(0); }
+.nova-sheet-handle {
+  width:36px; height:4px; border-radius:2px;
+  background:rgba(255,255,255,0.15); margin:12px auto 0; flex-shrink:0;
+}
+.nova-sheet-head {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 18px 12px; flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
+.nova-sheet-orb {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0; position:relative;
+  background:radial-gradient(circle at 32% 28%,var(--ng-hi,#eafff6),var(--ng-accent,#6ee7b7) 42%,var(--ng-dk,#1f8f66) 100%);
+  box-shadow:0 0 18px -4px var(--ng-accent,#6ee7b7),inset 0 -4px 10px rgba(0,0,0,.25);
+  animation:ngFloat 4s ease-in-out infinite;
+}
+.nova-sheet-orb::before,.nova-sheet-orb::after {
+  content:''; position:absolute; top:38%; width:7px; height:7px; border-radius:50%;
+  background:var(--ng-eye,#06281d); box-shadow:0 0 4px rgba(0,0,0,.4); transition:height .15s;
+}
+.nova-sheet-orb::before{left:30%;} .nova-sheet-orb::after{right:30%;}
+.nova-sheet-orb.think { animation:ngFloat 1.1s ease-in-out infinite,ngPulse 1.1s ease-in-out infinite; }
+.nova-sheet-orb.happy::before,.nova-sheet-orb.happy::after { height:3px; border-radius:0 0 7px 7px; }
+@keyframes ngPulse { 0%,100%{box-shadow:0 0 18px -4px var(--ng-accent,#6ee7b7)} 50%{box-shadow:0 0 30px 2px var(--ng-accent,#6ee7b7)} }
+.nova-sheet-info { flex:1; }
+.nova-sheet-name { font-size:15px; font-weight:700; color:#e9ecf5; }
+.nova-sheet-role { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:rgba(233,236,245,.4); margin-top:1px; }
+.nova-sheet-actions { display:flex; gap:6px; }
+.nsa-btn {
+  width:34px; height:34px; border-radius:9px;
+  border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04);
+  color:rgba(233,236,245,.55); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+  transition:color .15s,border-color .15s; -webkit-tap-highlight-color:transparent;
+}
+.nsa-btn:hover { color:#e9ecf5; border-color:rgba(255,255,255,.22); }
+.nsa-btn.has-key { border-color:var(--ng-accent,#6ee7b7); color:var(--ng-accent,#6ee7b7); }
+/* Key panel */
+.nova-keypanel { display:none; padding:12px 18px; border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; }
+.nova-keypanel.open { display:block; }
+.nova-keybar { display:flex; gap:8px; margin-bottom:8px; }
+.nova-keybar input { flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); color:#e9ecf5; border-radius:9px; padding:10px 12px; font-size:13px; outline:none; font-family:inherit; }
+.nova-keybar input:focus { border-color:var(--ng-accent,#6ee7b7); }
+.nova-keybar button { border:0; border-radius:9px; padding:0 15px; cursor:pointer; color:#04140d; background:var(--ng-accent,#6ee7b7); font-weight:700; font-size:13px; font-family:inherit; }
+.nova-key-hint { font-size:11px; color:rgba(233,236,245,.4); line-height:1.5; margin:0; }
+.nova-key-hint.saved { color:var(--ng-accent,#6ee7b7); }
+/* Quick actions */
+.nova-quick { display:flex; gap:7px; padding:10px 18px 0; flex-shrink:0; flex-wrap:wrap; }
+.nova-quick-btn { font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:99px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.03); color:rgba(233,236,245,.75); cursor:pointer; transition:all .15s; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.nova-quick-btn:hover { border-color:var(--ng-accent,#6ee7b7); color:var(--ng-accent,#6ee7b7); }
+/* Feed */
+.nova-feed-wrap { flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:10px; min-height:0; }
+.nova-msg { max-width:90%; }
+.nova-msg.user { align-self:flex-end; }
+.nova-msg.coach { align-self:flex-start; width:100%; }
+.nova-bubble { border-radius:14px; padding:11px 14px; font-size:14px; line-height:1.55; }
+.nova-msg.user .nova-bubble { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); color:#e9ecf5; }
+.nova-msg.coach .nova-bubble { background:rgba(255,255,255,.04); border:1px solid color-mix(in srgb,var(--ng-accent,#6ee7b7) 38%,transparent); border-left:3px solid var(--ng-accent,#6ee7b7); color:rgba(233,236,245,.9); }
+.nova-tag { display:inline-block; margin-bottom:7px; font-family:ui-monospace,monospace; font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#04140d; background:var(--ng-accent,#6ee7b7); padding:3px 8px; border-radius:999px; }
+.nova-pill { color:var(--ng-accent,#6ee7b7); background:color-mix(in srgb,var(--ng-accent,#6ee7b7) 16%,transparent); padding:1px 6px; border-radius:6px; font-weight:600; }
+.nova-reply-list { margin:5px 0 0; padding-left:16px; display:grid; gap:5px; }
+.nova-reply-list li { line-height:1.45; }
+.nova-dots { display:inline-flex; gap:4px; }
+.nova-dots i { width:5px; height:5px; border-radius:50%; background:var(--ng-accent,#6ee7b7); opacity:.4; animation:nd 1.2s ease-in-out infinite; }
+.nova-dots i:nth-child(2){animation-delay:.2s} .nova-dots i:nth-child(3){animation-delay:.4s}
+@keyframes nd { 0%,100%{opacity:.35;transform:scale(1)} 50%{opacity:1;transform:scale(1.4)} }
+/* Composer */
+.nova-composer { display:flex; gap:8px; padding:10px 18px 0; flex-shrink:0; }
+.nova-composer input { flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10); color:#e9ecf5; border-radius:11px; padding:10px 13px; font-size:13.5px; outline:none; font-family:inherit; }
+.nova-composer input:focus { border-color:var(--ng-accent,#6ee7b7); }
+.nova-composer button { width:40px; border:0; border-radius:11px; cursor:pointer; color:#04140d; background:var(--ng-accent,#6ee7b7); font-size:15px; flex-shrink:0; }
+.nova-composer button:active { transform:scale(.94); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1279,9 +1395,15 @@ img, video, canvas, svg { max-width: 100%; }
     <div class="wt-divider"><span>WEIGHT</span></div>
 
     <div class="wt-card">
-      <div class="wt-row">
-        <span class="wt-num" id="wtNum">—</span>
-        <span class="wt-unit" id="wtUnit">kg</span>
+      <div class="wt-top-row">
+        <div class="wt-row">
+          <span class="wt-num" id="wtNum">—</span>
+          <span class="wt-unit" id="wtUnit">kg</span>
+        </div>
+        <button class="nova-gym-btn" id="novaGymBtn" type="button">
+          <span class="nova-gym-orb"></span>
+          Ask Nova
+        </button>
       </div>
       <div class="wt-delta hidden" id="wtDelta"></div>
       <div class="wt-streak hidden" id="wtStreak">🔥<span id="wtStreakNum">0 day streak</span></div>
@@ -1430,6 +1552,41 @@ img, video, canvas, svg { max-width: 100%; }
       </div>
     </div>
 
+  </div>
+
+  <!-- Nova Chat Sheet -->
+  <div class="nova-sheet" id="novaSheet">
+    <div class="nova-sheet-scrim" id="novaSheetScrim"></div>
+    <div class="nova-sheet-card">
+      <div class="nova-sheet-handle"></div>
+      <div class="nova-sheet-head">
+        <div class="nova-sheet-orb" id="novaSheetOrb"></div>
+        <div class="nova-sheet-info">
+          <div class="nova-sheet-name">Nova</div>
+          <div class="nova-sheet-role">AI Mentor</div>
+        </div>
+        <div class="nova-sheet-actions">
+          <button class="nsa-btn" id="novaSheetKeyBtn" title="API key">🔑</button>
+          <button class="nsa-btn" id="novaSheetClose" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="nova-keypanel" id="novaKeypanel">
+        <div class="nova-keybar">
+          <input id="novaKeyInput" type="password" placeholder="paste Anthropic API key (sk-ant-…)" autocomplete="off">
+          <button id="novaKeySave">Save</button>
+        </div>
+        <p class="nova-key-hint" id="novaKeyHint">Stored only in this browser — sent only to Anthropic.</p>
+      </div>
+      <div class="nova-quick">
+        <button class="nova-quick-btn" id="novaOverviewBtn">📊 Overview</button>
+        <button class="nova-quick-btn" id="novaWeightBtn">⚖️ Weight trend</button>
+      </div>
+      <div class="nova-feed-wrap" id="novaFeed"></div>
+      <div class="nova-composer">
+        <input id="novaChatInput" placeholder="ask Nova anything…" autocomplete="off">
+        <button id="novaSend">→</button>
+      </div>
+    </div>
   </div>
 
   <div class="po-header">
@@ -3508,6 +3665,166 @@ img, video, canvas, svg { max-width: 100%; }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pcFlushPushOnUnload();
   });
+})();
+</script>
+
+<script>
+/* Nova chat sheet — gym.html integration */
+(function(){
+  const _GYM_PAL = {
+    mint:   {accent:'#6EE7B7',hi:'#eafff6',dk:'#1f8f66',eye:'#06281d'},
+    violet: {accent:'#A78BFA',hi:'#f0eaff',dk:'#4c1d95',eye:'#1e0b38'},
+    gold:   {accent:'#FBBF24',hi:'#fffbe5',dk:'#92400e',eye:'#2d1300'},
+    ocean:  {accent:'#60A5FA',hi:'#e0f2fe',dk:'#1e40af',eye:'#0c1d50'},
+    coral:  {accent:'#F97316',hi:'#fff3eb',dk:'#7c2d12',eye:'#2d0d00'},
+  };
+  const _pal = _GYM_PAL[localStorage.getItem('nova_palette')||'mint'] || _GYM_PAL.mint;
+  const _r = document.documentElement.style;
+  _r.setProperty('--ng-accent', _pal.accent);
+  _r.setProperty('--ng-hi',     _pal.hi);
+  _r.setProperty('--ng-dk',     _pal.dk);
+  _r.setProperty('--ng-eye',    _pal.eye);
+
+  const KEY_LS = 'nova_lite_api_key';
+  const sheet     = document.getElementById('novaSheet');
+  const sheetOrb  = document.getElementById('novaSheetOrb');
+  const scrim     = document.getElementById('novaSheetScrim');
+  const closeBtn  = document.getElementById('novaSheetClose');
+  const keyBtn    = document.getElementById('novaSheetKeyBtn');
+  const keypanel  = document.getElementById('novaKeypanel');
+  const keyInput  = document.getElementById('novaKeyInput');
+  const keySave   = document.getElementById('novaKeySave');
+  const keyHint   = document.getElementById('novaKeyHint');
+  const feed      = document.getElementById('novaFeed');
+  const chatInput = document.getElementById('novaChatInput');
+  const sendBtn   = document.getElementById('novaSend');
+  const gymBtn    = document.getElementById('novaGymBtn');
+
+  function savedKey(){ try{return localStorage.getItem(KEY_LS)||'';}catch(e){return '';} }
+  function refreshKeyUI(){
+    if(savedKey()){
+      keyHint.className='nova-key-hint saved'; keyHint.textContent='✓ Key saved in this browser.';
+      keyInput.placeholder='•••• key saved ••••'; keyBtn.classList.add('has-key');
+    }
+  }
+  refreshKeyUI();
+  keySave.addEventListener('click',()=>{
+    const k=keyInput.value.trim(); if(!k) return;
+    try{localStorage.setItem(KEY_LS,k);}catch(e){}
+    keyInput.value=''; refreshKeyUI(); keypanel.classList.remove('open');
+  });
+  keyBtn.addEventListener('click',()=>keypanel.classList.toggle('open'));
+
+  let opened=false;
+  function openSheet(){ sheet.classList.add('is-open'); if(!opened){opened=true;greet();} }
+  function closeSheet(){ sheet.classList.remove('is-open'); }
+  gymBtn.addEventListener('click',openSheet);
+  closeBtn.addEventListener('click',closeSheet);
+  scrim.addEventListener('click',closeSheet);
+
+  function setOrb(s){ sheetOrb.className='nova-sheet-orb'+(s?' '+s:''); }
+
+  function redact(val){
+    if(Array.isArray(val)) return val.map(redact);
+    if(val&&typeof val==='object'){
+      const o={};
+      for(const k in val){
+        if(k==='dataUrl'||k==='photo'||k==='image'){o[k]='[image omitted]';continue;}
+        o[k]=redact(val[k]);
+      }
+      return o;
+    }
+    if(typeof val==='string'&&val.length>400&&val.indexOf('data:')===0) return '[large data omitted]';
+    return val;
+  }
+  function dashboardData(){
+    const out={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); if(k===KEY_LS) continue;
+      let v; try{v=JSON.parse(localStorage.getItem(k));}catch(e){v=localStorage.getItem(k);}
+      out[k]=redact(v);
+    }
+    return out;
+  }
+  function summarizeGym(){
+    let weights=[],photos=[],workoutDone={};
+    try{weights=JSON.parse(localStorage.getItem('po_coach_weights')||'[]');}catch(e){}
+    try{photos=JSON.parse(localStorage.getItem('po_coach_photos')||'[]');}catch(e){}
+    try{workoutDone=JSON.parse(localStorage.getItem('po_coach_workout_done')||'{}');}catch(e){}
+    const lines=[];
+    if(weights.length){
+      const s=weights.slice().sort((a,b)=>String(a.dateKey).localeCompare(String(b.dateKey)));
+      const f=s[0],l=s[s.length-1],d=l.weight-f.weight;
+      lines.push(`Weight log: ${s.length} entries, ${f.dateKey}(${f.weight}kg) → ${l.dateKey}(${l.weight}kg), total ${d>=0?'+':''}${d.toFixed(1)}.`);
+      const cut=Date.now()-30*24*3600*1000,l30=s.filter(e=>new Date(e.dateKey).getTime()>=cut);
+      if(l30.length>=2){const d30=l30[l30.length-1].weight-l30[0].weight;lines.push(`Last 30 days: ${d30>=0?'+':''}${d30.toFixed(1)}.`);}
+    } else { lines.push('Weight log: no entries yet.'); }
+    if(photos.length){const s=photos.slice().sort((a,b)=>String(a.dateKey||'').localeCompare(String(b.dateKey||'')));lines.push(`Progress photos: ${photos.length}, ${s[0].dateKey||'?'} → ${s[s.length-1].dateKey||'?'}.`);}
+    else{lines.push('Progress photos: none yet.');}
+    lines.push(`Workouts marked done: ${Object.values(workoutDone).filter(Boolean).length}.`);
+    return lines.join('\n');
+  }
+
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  function inlineMarks(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<span class="nova-pill">$1</span>');}
+  function renderMsg(text){
+    const lines=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const items=[],loose=[];
+    for(const l of lines){
+      if(/^[-•*]\s+/.test(l)) items.push('<li>'+inlineMarks(l.replace(/^[-•*]\s+/,''))+'</li>');
+      else loose.push(inlineMarks(l));
+    }
+    let html=loose.join('<br>');
+    if(items.length) html+=(html?'<br>':'')+'<ul class="nova-reply-list">'+items.join('')+'</ul>';
+    return html;
+  }
+  function addUser(t){const e=document.createElement('div');e.className='nova-msg user';e.innerHTML='<div class="nova-bubble">'+esc(t)+'</div>';feed.appendChild(e);scroll();}
+  function addCoach(html){const e=document.createElement('div');e.className='nova-msg coach';e.innerHTML='<div class="nova-bubble"><span class="nova-tag">Nova</span><div>'+html+'</div></div>';feed.appendChild(e);scroll();return e;}
+  function scroll(){feed.scrollTop=feed.scrollHeight;}
+
+  const SYS =
+    "You are Nova, an AI mentor inside the user's fitness dashboard. " +
+    "You have access to their gym training logs, weight tracking, and progress photos. " +
+    "Give honest, specific, encouraging guidance. " +
+    "Answer in short bullet points starting with '- ', plain language. " +
+    "Wrap key numbers and words in **double asterisks**. End with one '- Do today:' bullet.\n\n" +
+    "Computed gym/weight/photo summary:\n";
+
+  let busy=false;
+  async function ask(text){
+    text=(text||'').trim(); if(!text||busy) return;
+    const key=savedKey();
+    if(!key){addCoach('- Tap the 🔑 icon above and paste your **Anthropic API key** to unlock Nova.');return;}
+    busy=true; addUser(text); chatInput.value=''; setOrb('think');
+    const loading=addCoach('<span class="nova-dots"><i></i><i></i><i></i></span>');
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-opus-4-8',max_tokens:1024,
+          system:SYS+summarizeGym()+'\n\nFull dashboard data:\n'+JSON.stringify(dashboardData()),
+          messages:[{role:'user',content:text}]})
+      });
+      const json=await res.json();
+      if(json.error){loading.querySelector('div:last-child').innerHTML=renderMsg('- '+(json.error.message||'Something went wrong.'));setOrb('');busy=false;return;}
+      const reply=(json.content&&json.content[0]&&json.content[0].text)||'Hmm, no reply.';
+      loading.querySelector('div:last-child').innerHTML=renderMsg(reply);
+      setOrb('happy'); setTimeout(()=>setOrb(''),2500);
+    } catch(e){
+      loading.querySelector('div:last-child').innerHTML=renderMsg('- Could not reach Anthropic — check connection and key.');
+      setOrb('');
+    }
+    busy=false;
+  }
+
+  sendBtn.addEventListener('click',()=>ask(chatInput.value));
+  chatInput.addEventListener('keydown',e=>{if(e.key==='Enter')ask(chatInput.value);});
+  document.getElementById('novaOverviewBtn').addEventListener('click',()=>ask('Give me a full overview of how everything is going — my gym training, weight trend, and progress photos. Use real numbers.'));
+  document.getElementById('novaWeightBtn').addEventListener('click',()=>ask('How is my weight trend looking? Am I on track? Break down recent change.'));
+
+  function greet(){
+    addCoach('Hey — I am <b>Nova</b>. '+(savedKey()?'Tap <b>Overview</b> for a full read on your training and weight — or just ask me anything.':'Paste your Anthropic key (tap 🔑 above) and I can analyse all your gym data.'));
+  }
 })();
 </script>
 

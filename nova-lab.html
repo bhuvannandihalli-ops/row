@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#05060c">
+<title>Nova Lab · Avatar Customizer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent: #6EE7B7; --accent-2: #67E8F9;
+  --bg: #05060c; --fg: #e9ecf5; --muted: rgba(233,236,245,.55); --line: rgba(255,255,255,.1);
+  --orb-hi: #eafff6; --orb-dk: #1f8f66; --orb-eye: #06281d;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  min-height: 100vh; position: relative; overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle at 50% 28%, rgba(110,231,183,.12), transparent 55%);
+  filter: blur(50px);
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none; z-index: -1;
+}
+
+.wrap {
+  max-width: 480px; margin: 0 auto;
+  padding: 28px max(20px, env(safe-area-inset-right)) 80px max(20px, env(safe-area-inset-left));
+}
+
+.back {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--muted); font-size: 13px; text-decoration: none;
+  margin-bottom: 30px; letter-spacing: .01em;
+  transition: color .15s;
+}
+.back:hover { color: var(--fg); }
+.back-icon { font-size: 12px; }
+
+.header { margin-bottom: 36px; }
+.lab-eyebrow {
+  font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.lab-title {
+  font-family: 'Times New Roman', Georgia, serif; font-style: italic;
+  font-size: 36px; font-weight: 500; line-height: 1; margin-bottom: 6px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.lab-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* ---- Live preview card ---- */
+.preview-card {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  padding: 40px 24px 32px; margin-bottom: 28px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 24px; position: relative; overflow: hidden;
+}
+.preview-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.04) 0%, transparent 55%);
+  border-radius: inherit; pointer-events: none;
+}
+.orb-xl {
+  width: 112px; height: 112px; border-radius: 50%; position: relative; flex-shrink: 0;
+  background: radial-gradient(circle at 32% 28%, var(--orb-hi), var(--accent) 42%, var(--orb-dk) 100%);
+  box-shadow: 0 0 52px -6px var(--accent), inset 0 -14px 30px rgba(0,0,0,.3);
+  animation: orbFloat 4s ease-in-out infinite;
+}
+.orb-xl::before, .orb-xl::after {
+  content: ''; position: absolute; top: 38%; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--orb-eye); box-shadow: 0 0 10px rgba(0,0,0,.5);
+}
+.orb-xl::before { left: 30%; }
+.orb-xl::after { right: 30%; }
+@keyframes orbFloat { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+
+.preview-meta { text-align: center; }
+.preview-eyebrow {
+  font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+}
+.preview-theme-name {
+  font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--accent);
+}
+.preview-saved-badge {
+  display: inline-block; margin-top: 6px;
+  font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: .14em;
+  text-transform: uppercase; color: #04140d; background: var(--accent);
+  padding: 3px 9px; border-radius: 99px;
+  opacity: 0; transition: opacity .3s;
+}
+.preview-saved-badge.show { opacity: 1; }
+
+/* ---- Palette section ---- */
+.section-label {
+  font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+}
+
+.palettes {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+@media (max-width: 420px) {
+  .palettes { grid-template-columns: repeat(3, 1fr); gap: 9px; }
+}
+
+.pal-card {
+  --card-accent: #6EE7B7;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 18px 8px 15px;
+  background: rgba(255,255,255,.03);
+  border: 1.5px solid rgba(255,255,255,.07);
+  border-radius: 18px; cursor: pointer;
+  transition: transform .2s ease, border-color .22s ease, box-shadow .22s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.pal-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--card-accent) 45%, transparent);
+}
+.pal-card:active { transform: translateY(-1px); }
+.pal-card.active {
+  border-color: var(--card-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent) 22%, transparent),
+              0 8px 24px rgba(0,0,0,.45);
+}
+
+.pal-orb {
+  width: 46px; height: 46px; border-radius: 50%;
+  position: relative; flex-shrink: 0;
+  box-shadow: 0 0 18px -4px var(--card-accent);
+}
+
+.pal-name {
+  font-size: 11px; font-weight: 600;
+  color: rgba(233,236,245,.75); text-align: center;
+}
+
+.pal-ring {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; color: transparent;
+  transition: background .2s, border-color .2s, color .2s;
+  flex-shrink: 0;
+}
+.pal-card.active .pal-ring {
+  background: var(--card-accent);
+  border-color: var(--card-accent);
+  color: #04140d;
+}
+</style>
+<script src="voice.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="nova-lite.html" class="back">
+    <span class="back-icon">←</span> Back to Nova
+  </a>
+
+  <div class="header">
+    <div class="lab-eyebrow">Nova · Lab</div>
+    <div class="lab-title">Avatar Studio</div>
+    <div class="lab-desc">Pick a colour theme. Changes apply everywhere instantly.</div>
+  </div>
+
+  <div class="preview-card">
+    <div class="orb-xl" id="previewOrb"></div>
+    <div class="preview-meta">
+      <div class="preview-eyebrow">Active theme</div>
+      <div class="preview-theme-name" id="previewName">Mint</div>
+      <div class="preview-saved-badge" id="savedBadge">Saved</div>
+    </div>
+  </div>
+
+  <div class="section-label">Choose a palette</div>
+  <div class="palettes" id="palettes"></div>
+
+</div>
+
+<script>
+(function(){
+  const PALETTES = [
+    { id: 'mint',   name: 'Mint',   accent: '#6EE7B7', accent2: '#67E8F9', orbHi: '#eafff6', orbDk: '#1f8f66', orbEye: '#06281d' },
+    { id: 'violet', name: 'Violet', accent: '#A78BFA', accent2: '#C4B5FD', orbHi: '#f0eaff', orbDk: '#4c1d95', orbEye: '#1e0b38' },
+    { id: 'gold',   name: 'Gold',   accent: '#FBBF24', accent2: '#FCD34D', orbHi: '#fffbe5', orbDk: '#92400e', orbEye: '#2d1300' },
+    { id: 'ocean',  name: 'Ocean',  accent: '#60A5FA', accent2: '#93C5FD', orbHi: '#e0f2fe', orbDk: '#1e40af', orbEye: '#0c1d50' },
+    { id: 'coral',  name: 'Coral',  accent: '#F97316', accent2: '#FDBA74', orbHi: '#fff3eb', orbDk: '#7c2d12', orbEye: '#2d0d00' },
+  ];
+
+  const root = document.documentElement.style;
+  const previewName = document.getElementById('previewName');
+  const savedBadge = document.getElementById('savedBadge');
+  const container = document.getElementById('palettes');
+  let savedTimer;
+
+  const current = localStorage.getItem('nova_palette') || 'mint';
+
+  function applyToRoot(p) {
+    root.setProperty('--accent', p.accent);
+    root.setProperty('--accent-2', p.accent2);
+    root.setProperty('--orb-hi', p.orbHi);
+    root.setProperty('--orb-dk', p.orbDk);
+    root.setProperty('--orb-eye', p.orbEye);
+    previewName.textContent = p.name;
+    previewName.style.color = p.accent;
+    savedBadge.style.background = p.accent;
+  }
+
+  function flashSaved() {
+    clearTimeout(savedTimer);
+    savedBadge.classList.add('show');
+    savedTimer = setTimeout(() => savedBadge.classList.remove('show'), 1800);
+  }
+
+  function select(id) {
+    const p = PALETTES.find(x => x.id === id);
+    if (!p) return;
+    localStorage.setItem('nova_palette', id);
+    applyToRoot(p);
+    flashSaved();
+    document.querySelectorAll('.pal-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+  }
+
+  PALETTES.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pal-card' + (p.id === current ? ' active' : '');
+    card.dataset.id = p.id;
+    card.style.setProperty('--card-accent', p.accent);
+
+    const orb = document.createElement('div');
+    orb.className = 'pal-orb';
+    orb.style.cssText = `background:radial-gradient(circle at 32% 28%,${p.orbHi},${p.accent} 42%,${p.orbDk} 100%)`;
+
+    const eyeL = document.createElement('span');
+    eyeL.style.cssText = `position:absolute;top:38%;left:28%;width:7px;height:7px;border-radius:50%;background:${p.orbEye}`;
+    const eyeR = document.createElement('span');
+    eyeR.style.cssText = `position:absolute;top:38%;right:28%;width:7px;height:7px;border-radius:50%;background:${p.orbEye}`;
+    orb.appendChild(eyeL);
+    orb.appendChild(eyeR);
+
+    const name = document.createElement('div');
+    name.className = 'pal-name';
+    name.textContent = p.name;
+
+    const ring = document.createElement('div');
+    ring.className = 'pal-ring';
+    ring.textContent = '✓';
+
+    card.appendChild(orb);
+    card.appendChild(name);
+    card.appendChild(ring);
+    card.addEventListener('click', () => select(p.id));
+    container.appendChild(card);
+  });
+
+  // Init from saved
+  const init = PALETTES.find(x => x.id === current) || PALETTES[0];
+  applyToRoot(init);
+})();
+</script>
+</body>
+</html>

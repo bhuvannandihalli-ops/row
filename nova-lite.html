@@ -7,6 +7,7 @@
 <title>Nova Lite · AI Mentor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="topbar.js" defer></script>
+<script src="voice.js" defer></script>
 <!-- ============================================================
  * NOVA LITE — a simple, drop-in AI mentor for ANY dashboard.
  * Single self-contained file. No backend, no build step.
@@ -24,7 +25,7 @@
  * ============================================================ -->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --accent: #6EE7B7; --accent-2: #67E8F9; --bg: #05060c; --fg: #e9ecf5; --muted: rgba(233,236,245,.55); --line: rgba(255,255,255,.1); }
+:root { --accent: #6EE7B7; --accent-2: #67E8F9; --bg: #060a1c; --fg: #e9ecf5; --muted: rgba(233,236,245,.55); --line: rgba(255,255,255,.1); --orb-hi: #eafff6; --orb-dk: #1f8f66; --orb-eye: #06281d; }
 html, body { background: var(--bg); }
 body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); min-height: 100vh; }
 
@@ -39,11 +40,11 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: 
 
 /* ---- flat CSS orb avatar (lightweight, no Three.js) ---- */
 .orb { width: 60px; height: 60px; border-radius: 50%; position: relative; flex-shrink: 0;
-  background: radial-gradient(circle at 32% 28%, #eafff6, var(--accent) 42%, #1f8f66 100%);
+  background: radial-gradient(circle at 32% 28%, var(--orb-hi), var(--accent) 42%, var(--orb-dk) 100%);
   box-shadow: 0 0 22px -2px var(--accent), inset 0 -6px 14px rgba(0,0,0,.25);
   animation: orbFloat 4s ease-in-out infinite; }
 .orb::before, .orb::after { content: ''; position: absolute; top: 38%; width: 9px; height: 9px; border-radius: 50%;
-  background: #06281d; box-shadow: 0 0 6px rgba(0,0,0,.4); transition: height .15s; }
+  background: var(--orb-eye); box-shadow: 0 0 6px rgba(0,0,0,.4); transition: height .15s; }
 .orb::before { left: 30%; } .orb::after { right: 30%; }
 .orb.think { animation: orbFloat 1.1s ease-in-out infinite, orbPulse 1.1s ease-in-out infinite; }
 .orb.happy::before, .orb.happy::after { height: 4px; border-radius: 0 0 9px 9px; }
@@ -97,7 +98,10 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: 
       <div class="title"><h1>Nova Lite</h1><div class="role">your mentor</div></div>
       <div class="top-right">
         <div class="orb" id="orb"></div>
-        <button id="keyToggle" class="key-toggle" aria-label="API key settings" title="API key">🔑</button>
+        <div style="display:flex;gap:6px;">
+          <button class="key-toggle" title="Customise avatar" onclick="location.href='nova-lab.html'">🎨</button>
+          <button id="keyToggle" class="key-toggle" aria-label="API key settings" title="API key">🔑</button>
+        </div>
       </div>
     </div>
 
@@ -126,6 +130,16 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: 
 
 <script>
 (function(){
+  // Apply saved Nova palette on load
+  const _PAL = {
+    mint:   { accent: '#6EE7B7', accent2: '#67E8F9', orbHi: '#eafff6', orbDk: '#1f8f66', orbEye: '#06281d' },
+    violet: { accent: '#A78BFA', accent2: '#C4B5FD', orbHi: '#f0eaff', orbDk: '#4c1d95', orbEye: '#1e0b38' },
+    gold:   { accent: '#FBBF24', accent2: '#FCD34D', orbHi: '#fffbe5', orbDk: '#92400e', orbEye: '#2d1300' },
+    ocean:  { accent: '#60A5FA', accent2: '#93C5FD', orbHi: '#e0f2fe', orbDk: '#1e40af', orbEye: '#0c1d50' },
+    coral:  { accent: '#F97316', accent2: '#FDBA74', orbHi: '#fff3eb', orbDk: '#7c2d12', orbEye: '#2d0d00' },
+  };
+  (function(){ const p = _PAL[localStorage.getItem('nova_palette') || 'mint'] || _PAL.mint; const r = document.documentElement.style; r.setProperty('--accent', p.accent); r.setProperty('--accent-2', p.accent2); r.setProperty('--orb-hi', p.orbHi); r.setProperty('--orb-dk', p.orbDk); r.setProperty('--orb-eye', p.orbEye); })();
+
   const KEY_LS = 'nova_lite_api_key';
   const feed = document.getElementById('feed');
   const input = document.getElementById('chatInput');
