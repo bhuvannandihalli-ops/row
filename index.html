@@ -11,15 +11,19 @@
 <script src="voice.js" defer></script>
 <style>
 :root {
-  --bg: #060a1c;
-  --bg-tile: rgba(8, 12, 34, 0.82);
-  --border: rgba(60, 88, 200, 0.13);
-  --border-h: rgba(90, 130, 255, 0.28);
-  --text-1: #ffffff;
-  --text-2: rgba(180, 192, 228, 0.72);
-  --text-3: rgba(110, 135, 200, 0.50);
-  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg: #04050e;
+  --glass: rgba(255,255,255,0.036);
+  --glass-hover: rgba(255,255,255,0.062);
+  --border: rgba(255,255,255,0.072);
+  --border-hover: rgba(255,255,255,0.16);
+  --text-1: #f4f6ff;
+  --text-2: rgba(190,200,240,0.68);
+  --text-3: rgba(130,148,210,0.44);
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius: 22px;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -31,23 +35,22 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 body {
-  min-height: 100vh;
-  overflow-x: hidden;
+  min-height: 100vh; overflow-x: hidden; position: relative;
   padding: 0 max(20px, env(safe-area-inset-right)) 100px max(20px, env(safe-area-inset-left));
-  position: relative;
 }
 
-/* Deep navy space background */
+/* Aurora background */
 body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: -2;
   background:
-    radial-gradient(ellipse 65% 70% at 10% 55%, rgba(25, 45, 170, 0.28), transparent 60%),
-    radial-gradient(ellipse 55% 50% at 88% 18%, rgba(90, 35, 185, 0.16), transparent 55%),
-    radial-gradient(ellipse 90% 60% at 50% 105%, rgba(15, 25, 110, 0.22), transparent 55%);
-  animation: bgDrift 40s ease-in-out infinite alternate;
+    radial-gradient(ellipse 70% 60% at 8% 50%,  rgba(28, 52, 195, 0.20), transparent 62%),
+    radial-gradient(ellipse 52% 48% at 92% 14%,  rgba(105, 38, 200, 0.14), transparent 58%),
+    radial-gradient(ellipse 85% 55% at 50% 108%, rgba(12, 22, 110, 0.18), transparent 56%),
+    radial-gradient(ellipse 45% 45% at 62% 38%,  rgba(65, 22, 150, 0.06), transparent 55%);
+  animation: bgDrift 44s ease-in-out infinite alternate;
 }
-@keyframes bgDrift { 0%{transform:translate3d(0,0,0)} 100%{transform:translate3d(-18px,10px,0)} }
+@keyframes bgDrift { 0%{transform:translate3d(0,0,0)} 100%{transform:translate3d(-20px,12px,0)} }
 body::after {
   content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background-image: radial-gradient(rgba(255,255,255,0.011) 1px, transparent 1px);
@@ -57,22 +60,29 @@ body::after {
 .page { max-width: 960px; margin: 0 auto; }
 
 /* Page header */
-.dash-header { padding: 22px 0 26px; }
+.dash-header {
+  padding: 30px 0 28px;
+  animation: fadeSlideDown 0.5s var(--ease) both;
+}
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .dash-title {
-  font-size: 34px; font-weight: 800; letter-spacing: -0.035em;
-  color: var(--text-1); line-height: 1; margin: 0 0 7px;
-  background: linear-gradient(170deg, #ffffff 0%, rgba(200,210,255,0.85) 100%);
+  font-size: 36px; font-weight: 800; letter-spacing: -0.04em;
+  line-height: 1; margin: 0 0 8px;
+  background: linear-gradient(160deg, #ffffff 0%, rgba(200,210,255,0.80) 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.dash-sub { font-size: 13px; color: var(--text-3); font-weight: 400; letter-spacing: 0.015em; }
+.dash-sub { font-size: 13px; color: var(--text-3); letter-spacing: 0.01em; }
 
 /* ===== Bento grid ===== */
 .bento {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 174px;
+  grid-auto-rows: 178px;
   grid-auto-flow: dense;
-  gap: 13px;
+  gap: 14px;
 }
 
 /* ===== Tile base ===== */
@@ -80,31 +90,61 @@ body::after {
   --accent: #FAFAFA;
   position: relative;
   display: flex; flex-direction: column;
-  padding: 18px 20px 16px;
-  background: var(--bg-tile);
+  padding: 20px 22px 18px;
+  background: var(--glass);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  backdrop-filter: blur(28px) saturate(1.4);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border-radius: var(--radius);
+  backdrop-filter: blur(32px) saturate(1.5);
+  -webkit-backdrop-filter: blur(32px) saturate(1.5);
   text-decoration: none; color: var(--text-1);
   overflow: hidden;
-  transition: transform 0.20s ease, border-color 0.20s ease, box-shadow 0.20s ease;
+  transition: transform 0.32s var(--spring), border-color 0.22s ease, box-shadow 0.32s ease, background 0.22s ease;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+  animation: tileIn 0.60s var(--ease) both;
 }
-/* Subtle shimmer */
+
+/* Staggered entrance */
+.tile:nth-child(1) { animation-delay: 0.05s; }
+.tile:nth-child(2) { animation-delay: 0.10s; }
+.tile:nth-child(3) { animation-delay: 0.14s; }
+.tile:nth-child(4) { animation-delay: 0.18s; }
+.tile:nth-child(5) { animation-delay: 0.22s; }
+.tile:nth-child(6) { animation-delay: 0.26s; }
+.tile:nth-child(7) { animation-delay: 0.30s; }
+.tile:nth-child(8) { animation-delay: 0.34s; }
+
+@keyframes tileIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Inner shimmer */
 .tile::before {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.045) 0%, transparent 55%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%);
   border-radius: inherit; pointer-events: none;
 }
-.tile:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-h));
-  box-shadow:
-    0 18px 44px rgba(0, 0, 10, 0.55),
-    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+/* Gradient top-edge highlight */
+.tile::after {
+  content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 28%, rgba(255,255,255,0.18)),
+    transparent);
+  pointer-events: none;
 }
-.tile:active { transform: translateY(-1px); }
+
+.tile:hover {
+  transform: translateY(-5px) scale(1.016);
+  background: var(--glass-hover);
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--border-hover));
+  box-shadow:
+    0 22px 55px rgba(0, 0, 14, 0.62),
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
+    0 0 36px -8px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.tile:active { transform: translateY(-2px) scale(1.006); transition-duration: 0.12s; }
 
 /* Size variants */
 .tile.big  { grid-column: span 2; grid-row: span 2; }
@@ -114,54 +154,55 @@ body::after {
 /* ===== Tile anatomy ===== */
 .tile-num {
   font-family: var(--font-mono);
-  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--accent) 55%, rgba(110, 145, 255, 0.9));
-  line-height: 1; display: flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.10em;
+  color: color-mix(in srgb, var(--accent) 52%, rgba(140,160,240,0.75));
+  line-height: 1; display: flex; align-items: center; gap: 6px;
 }
-.tile-num::before { content: '•'; font-size: 10px; }
+.tile-num::before { content: '·'; font-size: 20px; line-height: 0; vertical-align: -2px; opacity: 0.7; }
 
 .tile-top {
   display: flex; justify-content: space-between; align-items: flex-start;
 }
 .tile-emoji {
-  font-size: 26px; line-height: 1;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent));
+  font-size: 28px; line-height: 1;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 60%, transparent));
 }
-.tile.big .tile-emoji { font-size: 32px; }
+.tile.big .tile-emoji { font-size: 34px; }
 
 .tile-spacer { flex: 1; }
 
 .tile-name {
-  font-size: 22px; font-weight: 700; letter-spacing: -0.025em;
-  color: var(--text-1); line-height: 1.1; margin-bottom: 4px;
+  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+  color: var(--text-1); line-height: 1.1; margin-bottom: 5px;
 }
-.tile.big .tile-name { font-size: 36px; }
+.tile.big .tile-name { font-size: 38px; letter-spacing: -0.04em; }
 
 .tile-footer {
-  display: flex; justify-content: space-between; align-items: center; margin-top: 5px;
+  display: flex; justify-content: space-between; align-items: center; margin-top: 4px;
 }
 .tile-sub {
-  font-size: 12px; color: var(--text-3); font-weight: 500; line-height: 1.3;
+  font-size: 12px; color: var(--text-3); font-weight: 500; line-height: 1.35;
   flex: 1; min-width: 0; padding-right: 10px;
 }
-.tile.big .tile-sub { font-size: 13px; color: var(--text-2); }
+.tile.big .tile-sub { font-size: 13.5px; color: var(--text-2); }
 
 /* Circular arrow */
 .tile-arrow {
   width: 32px; height: 32px; border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.11);
   background: rgba(255,255,255,0.04);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 13px; color: var(--text-1);
-  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+  font-size: 13px; color: var(--text-2);
   flex-shrink: 0;
+  transition: background 0.24s var(--spring), border-color 0.24s, transform 0.24s var(--spring), color 0.18s;
 }
 .tile:hover .tile-arrow {
-  background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,0.06));
-  border-color: color-mix(in srgb, var(--accent) 55%, rgba(255,255,255,0.18));
-  transform: translateX(2px);
+  background: color-mix(in srgb, var(--accent) 20%, rgba(255,255,255,0.07));
+  border-color: color-mix(in srgb, var(--accent) 60%, rgba(255,255,255,0.2));
+  color: var(--text-1);
+  transform: translateX(3px);
 }
-.tile.big .tile-arrow { width: 36px; height: 36px; font-size: 14px; }
+.tile.big .tile-arrow { width: 38px; height: 38px; font-size: 15px; }
 
 /* =====================================================
    TILE ILLUSTRATIONS
@@ -170,12 +211,12 @@ body::after {
 /* 01 Main — planet + moon */
 .tile-planet {
   position: absolute; bottom: -28px; right: -18px;
-  width: 165px; height: 165px; border-radius: 50%; pointer-events: none;
+  width: 168px; height: 168px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle at 35% 32%, #3d2070 0%, #1c0e44 48%, #0d0622 100%);
   box-shadow:
-    0 0 55px 14px rgba(110, 50, 220, 0.30),
-    0 0 110px 45px rgba(75, 25, 175, 0.10),
-    inset 0 0 35px rgba(50, 15, 130, 0.55);
+    0 0 60px 16px rgba(110, 50, 220, 0.28),
+    0 0 120px 50px rgba(75, 25, 175, 0.09),
+    inset 0 0 40px rgba(50, 15, 130, 0.55);
 }
 .tile-planet::before {
   content: ''; position: absolute; inset: -18px; border-radius: 50%;
@@ -187,10 +228,10 @@ body::after {
   background: linear-gradient(135deg, rgba(130,70,255,0.25) 0%, transparent 60%);
 }
 .tile-moon {
-  position: absolute; right: 82px; bottom: 115px;
-  width: 42px; height: 42px; border-radius: 50%; pointer-events: none;
+  position: absolute; right: 84px; bottom: 118px;
+  width: 44px; height: 44px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle at 38% 32%, #2e1d60 0%, #160e38 100%);
-  box-shadow: 0 0 22px 6px rgba(120, 65, 255, 0.32);
+  box-shadow: 0 0 24px 7px rgba(120, 65, 255, 0.30);
 }
 
 /* 02 Fitness — flowing wave lines */
@@ -207,12 +248,12 @@ body::after {
 }
 .tile-ecg svg { width: 100%; height: 100%; overflow: visible; }
 
-/* 08 Nova — orb (uses palette from localStorage) */
+/* Nova orb (palette from localStorage) */
 .tile-nova-orb {
   position: absolute; top: 14px; right: 16px;
   width: 50px; height: 50px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle at 32% 28%, var(--no-hi,#eafff6), var(--no-a,#6ee7b7) 42%, var(--no-dk,#1f8f66) 100%);
-  box-shadow: 0 0 22px -5px var(--no-a,#6ee7b7), inset 0 -6px 12px rgba(0,0,0,0.28);
+  box-shadow: 0 0 24px -4px var(--no-a,#6ee7b7), inset 0 -6px 14px rgba(0,0,0,0.28);
   animation: orbFloat 4s ease-in-out infinite;
 }
 .tile-nova-orb::before, .tile-nova-orb::after {
@@ -220,10 +261,10 @@ body::after {
   background: var(--no-eye,#06281d);
 }
 .tile-nova-orb::before { left: 29%; }
-.tile-nova-orb::after { right: 29%; }
-@keyframes orbFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.tile-nova-orb::after  { right: 29%; }
+@keyframes orbFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
 
-/* 07 Void — concentric rings + glow */
+/* Void — concentric rings + glow */
 .tile-void-rings {
   position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
   width: 68px; height: 68px; pointer-events: none;
@@ -236,17 +277,17 @@ body::after {
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 720px) {
-  .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 152px; gap: 11px; }
+  .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 155px; gap: 11px; }
   .tile.big  { grid-row: span 1; }
   .tile.full { grid-column: span 2; }
-  .dash-title { font-size: 26px; }
+  .dash-title { font-size: 28px; }
 }
 @media (max-width: 440px) {
-  .bento { grid-template-columns: 1fr; grid-auto-rows: 130px; gap: 10px; }
+  .bento { grid-template-columns: 1fr; grid-auto-rows: 132px; gap: 10px; }
   .tile.big, .tile.wide, .tile.full { grid-column: span 1; grid-row: span 1; }
   .tile-name { font-size: 18px; }
   .tile.big .tile-name { font-size: 18px; }
-  .tile-planet { width: 110px; height: 110px; }
+  .tile-planet { width: 112px; height: 112px; }
   body { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
 }
 </style>

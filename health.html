@@ -12,31 +12,33 @@
 <script src="voice.js" defer></script>
 <style>
 :root {
-  --bg: #060a1c;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-secondary: rgba(255, 255, 255, 0.035);
-  --bg-input: rgba(0, 0, 0, 0.28);
-  --bg-input-focus: rgba(0, 0, 0, 0.36);
-  --bg-dropdown: rgba(15, 15, 18, 0.96);
+  --bg: #04050e;
+  --bg-card: rgba(255, 255, 255, 0.036);
+  --bg-secondary: rgba(255, 255, 255, 0.030);
+  --bg-input: rgba(0, 0, 0, 0.32);
+  --bg-input-focus: rgba(0, 0, 0, 0.42);
+  --bg-dropdown: rgba(10, 12, 22, 0.97);
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-soft: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.072);
+  --border-soft: rgba(255, 255, 255, 0.045);
   --border-strong: rgba(255, 255, 255, 0.12);
 
-  --text-primary: #FAFAFA;
-  --text-secondary: #B8B6B0;
-  --text-tertiary: #76746E;
-  --text-quaternary: #4D4B47;
+  --text-primary: #f4f6ff;
+  --text-secondary: #b8bdd4;
+  --text-tertiary: #6e738a;
+  --text-quaternary: #444a60;
 
-  --accent: #1D9E75;
-  --accent-glow: rgba(29, 158, 117, 0.35);
+  --accent: #2AB88A;
+  --accent-glow: rgba(42, 184, 138, 0.32);
   --warning: #FF8A4D;
   --warning-bg: rgba(163, 45, 45, 0.10);
   --tag-stack: #D8AB30;
-  --tag-stack-bg: rgba(216, 171, 48, 0.15);
+  --tag-stack-bg: rgba(216, 171, 48, 0.14);
 
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * { box-sizing: border-box; }
@@ -54,19 +56,19 @@ body { min-height: 100vh; position: relative; overflow-x: hidden; }
 body::before {
   content: ''; position: fixed; inset: 0;
   background:
-    radial-gradient(60% 50% at 82% 14%, rgba(224, 118, 88, 0.16) 0%, transparent 60%),
-    radial-gradient(50% 40% at 18% 90%, rgba(180, 180, 200, 0.06) 0%, transparent 60%);
-  filter: blur(40px);
+    radial-gradient(55% 50% at 84% 10%, rgba(200, 90, 60, 0.13) 0%, transparent 58%),
+    radial-gradient(60% 55% at 8% 88%, rgba(30, 80, 200, 0.11) 0%, transparent 60%),
+    radial-gradient(80% 55% at 48% 108%, rgba(10, 18, 100, 0.18) 0%, transparent 55%);
   pointer-events: none; z-index: 0;
-  animation: drift 36s ease-in-out infinite alternate;
+  animation: drift 38s ease-in-out infinite alternate;
 }
 body::after {
   content: ''; position: fixed; inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255,255,255,0.011) 1px, transparent 1px);
   background-size: 3px 3px;
   pointer-events: none; z-index: 1;
 }
-@keyframes drift { 0% { transform: translate(0, 0); } 100% { transform: translate(-2%, 2%); } }
+@keyframes drift { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-20px, 14px, 0); } }
 
 main {
   position: relative; z-index: 2;
@@ -103,11 +105,20 @@ main {
 
 .stack-card {
   background: var(--bg-card);
-  border-radius: 16px;
+  border-radius: 22px;
   padding: 22px 22px 18px;
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  backdrop-filter: blur(32px) saturate(1.4);
+  -webkit-backdrop-filter: blur(32px) saturate(1.4);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.stack-card::before {
+  content: '';
+  position: absolute; top: 0; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+  pointer-events: none;
 }
 
 .stack-head { margin-bottom: 12px; }

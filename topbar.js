@@ -20,9 +20,10 @@
   position: sticky; top: 0; z-index: 40;
   display: flex; justify-content: space-between; align-items: center;
   gap: 8px;
-  padding: max(10px, env(safe-area-inset-top)) 14px 8px;
-  background: #0a0a0b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  background: rgba(4, 5, 14, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.068);
+  backdrop-filter: blur(28px) saturate(1.4); -webkit-backdrop-filter: blur(28px) saturate(1.4);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
 }
 .topbar-home-btn {
@@ -98,32 +99,50 @@
 }
 .bottombar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
-  display: flex; justify-content: space-around; align-items: stretch;
-  padding: 6px max(0px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
-  background: #0a0a0b;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; justify-content: center; align-items: center;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent 0%, rgba(4,5,14,0.70) 28%, rgba(4,5,14,0.92) 100%);
+  border: none;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  pointer-events: none;
+}
+.bottombar-inner {
+  pointer-events: auto;
+  display: flex; gap: 4px; padding: 5px;
+  background: rgba(8, 10, 26, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  box-shadow: 0 10px 36px rgba(0,0,10,0.58), inset 0 1px 0 rgba(255,255,255,0.05);
+  max-width: 340px; width: 100%;
 }
 .bottombar-tab {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: 6px 0 4px; text-decoration: none;
-  color: rgba(255, 255, 255, 0.45);
+  gap: 3px; padding: 9px 8px 7px; text-decoration: none;
+  color: rgba(155, 172, 230, 0.46);
   font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-  -webkit-tap-highlight-color: transparent; transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.20s, background 0.20s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  border-radius: 15px; border: 1px solid transparent;
+}
+.bottombar-tab:hover { color: rgba(200, 215, 245, 0.82); transform: translateY(-1px); }
+.bottombar-tab.active {
+  color: #ffffff;
+  background: rgba(100, 120, 255, 0.12);
+  border-color: rgba(120, 140, 255, 0.20);
 }
 .bottombar-tab-icon {
-  font-size: 24px; line-height: 1;
-  filter: grayscale(100%) brightness(1.2); opacity: 0.55;
-  transition: opacity 0.15s, filter 0.15s, transform 0.10s;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0.46; transition: opacity 0.20s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
 }
-.bottombar-tab.active { color: #FAFAFA; }
-.bottombar-tab.active .bottombar-tab-icon {
-  filter: grayscale(100%) brightness(1.6); opacity: 1;
-}
-.bottombar-tab:active .bottombar-tab-icon { transform: scale(0.92); }
+.bottombar-tab-icon svg { width: 100%; height: 100%; display: block; }
+.bottombar-tab.active .bottombar-tab-icon { opacity: 1; }
+.bottombar-tab:active .bottombar-tab-icon { transform: scale(0.90); }
+.bottombar-tab:active { transform: scale(0.95); }
 body.has-bottombar {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
 }
 @media (max-width: 480px) {
   .topbar { padding-left: 10px; padding-right: 10px; gap: 6px; }
@@ -186,15 +205,20 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
 
   const bottombarHtml = `
 <nav class="bottombar" id="bottombar" role="navigation" aria-label="Main tabs">
-  <a href="main.html" class="bottombar-tab" data-page="main">
-    <span class="bottombar-tab-icon">🏠</span><span>Main</span>
-  </a>
-  <a href="health.html" class="bottombar-tab" data-page="health">
-    <span class="bottombar-tab-icon">💊</span><span>Health</span>
-  </a>
-  <a href="gym.html" class="bottombar-tab" data-page="fitness">
-    <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
-  </a>
+  <div class="bottombar-inner">
+    <a href="main.html" class="bottombar-tab" data-page="main">
+      <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      Main
+    </a>
+    <a href="health.html" class="bottombar-tab" data-page="health">
+      <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      Health
+    </a>
+    <a href="gym.html" class="bottombar-tab" data-page="fitness">
+      <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M6 12h12M3 6.5h1.5M19.5 6.5H21M3 17.5h1.5M19.5 17.5H21"/></svg></span>
+      Fitness
+    </a>
+  </div>
 </nav>`;
 
   function isFinancePage() {
