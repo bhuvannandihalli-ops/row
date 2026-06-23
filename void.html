@@ -513,6 +513,7 @@ body::after {
     <textarea
       class="void-textarea"
       id="void-input"
+      data-vmic-skip="true"
       placeholder="throw a thought in…   call dad sunday · book that flight · stretch more · idea for the app"
       rows="4"
     ></textarea>
@@ -722,6 +723,7 @@ let recognition = null;
 let isRecording = false;
 let baseText = '';
 let finalTranscript = '';
+let _restartTid = null;
 
 function initSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -737,9 +739,13 @@ function initSpeech() {
   recognition.lang = 'en-US';
 
   recognition.onstart = () => {
-    const ta = document.getElementById('void-input');
-    baseText = ta.value.trim();
-    finalTranscript = '';
+    // Only reset on first start, not on auto-restart (onend handles base rollover)
+    if (!isRecording) {
+      const ta = document.getElementById('void-input');
+      baseText = ta.value.trimEnd();
+      if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+      finalTranscript = '';
+    }
   };
 
   recognition.onresult = (e) => {
@@ -760,16 +766,26 @@ function initSpeech() {
   recognition.onerror = (e) => {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       document.getElementById('mic-status-text').textContent = 'Microphone access denied.';
-      setTimeout(() => setRecording(false), 1800);
+      setRecording(false);
+    } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      // Unexpected error — stop cleanly so the button doesn't get stuck
+      setRecording(false);
     }
-    // 'no-speech' and 'aborted' are normal — do nothing
   };
 
   recognition.onend = () => {
-    // Restart if user hasn't tapped stop (continuous mode can stop on silence)
-    if (isRecording) {
-      try { recognition.start(); } catch {}
-    }
+    if (!isRecording) return;
+    // Roll in current transcript as new base before restarting
+    const ta = document.getElementById('void-input');
+    baseText = ta.value.trimEnd();
+    if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+    finalTranscript = '';
+    // Small delay required — calling start() immediately in onend throws in some browsers
+    clearTimeout(_restartTid);
+    _restartTid = setTimeout(() => {
+      if (!isRecording) return;
+      try { recognition.start(); } catch (_) { setRecording(false); }
+    }, 180);
   };
 }
 
@@ -788,10 +804,15 @@ function toggleMic() {
   if (!recognition) return;
   if (isRecording) {
     setRecording(false);
+    clearTimeout(_restartTid);
     try { recognition.stop(); } catch {}
   } else {
+    const ta = document.getElementById('void-input');
+    baseText = ta.value.trimEnd();
+    if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+    finalTranscript = '';
     setRecording(true);
-    try { recognition.start(); } catch {}
+    try { recognition.start(); } catch { setRecording(false); }
   }
 }
 

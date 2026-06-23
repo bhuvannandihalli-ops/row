@@ -1,148 +1,206 @@
-// voice.js — floating mic button, dictates into whatever input is focused
+// voice.js — inline mic button on every text input, continuous + live transcription
 (function () {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
 
-  // --- build the button regardless (hide if SR unsupported so we can show a message) ---
-  const btn = document.createElement('button');
-  btn.id = 'global-mic-btn';
-  btn.setAttribute('aria-label', 'Voice input');
-  btn.innerHTML = '🎤';
+  // Only one recording session at a time
+  let activeRec   = null;
+  let activeBtn   = null;
+  let activeInput = null;
 
-  const toast = document.createElement('div');
-  toast.id = 'mic-toast';
+  const MIC_SVG  = '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-2 4v6a2 2 0 0 0 4 0V5a2 2 0 0 0-4 0zM5.3 10a1 1 0 0 1 1 1A5.7 5.7 0 0 0 12 16.7 5.7 5.7 0 0 0 17.7 11a1 1 0 0 1 2 0A7.7 7.7 0 0 1 13 18.65V21h2a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2h2v-2.35A7.7 7.7 0 0 1 4.3 11a1 1 0 0 1 1-1z"/></svg>';
+  const STOP_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>';
 
-  const style = document.createElement('style');
-  style.textContent =
-    '#global-mic-btn{' +
-      'position:fixed;' +
-      'bottom:calc(max(76px, env(safe-area-inset-bottom, 0px)) + 14px);' +
-      'right:max(18px, env(safe-area-inset-right, 0px));' +
-      'z-index:9999;width:52px;height:52px;border-radius:50%;border:none;' +
-      'background:rgba(40,40,50,0.92);backdrop-filter:blur(10px);' +
-      '-webkit-backdrop-filter:blur(10px);' +
-      'color:#fff;font-size:22px;cursor:pointer;' +
-      'box-shadow:0 4px 20px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.08);' +
-      'display:flex;align-items:center;justify-content:center;' +
-      'transition:background 0.2s,transform 0.12s,box-shadow 0.2s;' +
-      '-webkit-tap-highlight-color:transparent;user-select:none}' +
-    '#global-mic-btn:hover{background:rgba(55,55,68,0.95);transform:scale(1.06)}' +
-    '#global-mic-btn:active{transform:scale(0.94)}' +
-    '#global-mic-btn.mic-listening{' +
-      'background:rgba(200,40,40,0.85)!important;' +
-      'box-shadow:0 4px 20px rgba(220,55,55,0.55),inset 0 1px 0 rgba(255,255,255,0.08)!important;' +
-      'animation:mic-ring 1.1s ease-in-out infinite}' +
-    '#global-mic-btn.mic-no-target{animation:mic-shake 0.4s ease}' +
-    '@keyframes mic-ring{' +
-      '0%,100%{box-shadow:0 4px 20px rgba(220,55,55,0.55),0 0 0 0 rgba(220,55,55,0.5)}' +
-      '50%{box-shadow:0 4px 20px rgba(220,55,55,0.55),0 0 0 10px rgba(220,55,55,0)}}' +
-    '@keyframes mic-shake{' +
-      '0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}' +
-    '#mic-toast{' +
-      'position:fixed;bottom:calc(max(76px, env(safe-area-inset-bottom,0px)) + 76px);' +
-      'right:max(18px, env(safe-area-inset-right,0px));' +
-      'z-index:9998;background:rgba(30,30,38,0.95);backdrop-filter:blur(12px);' +
-      '-webkit-backdrop-filter:blur(12px);' +
-      'color:#E0DDD8;font-size:12px;font-weight:600;' +
-      'padding:7px 13px;border-radius:10px;white-space:nowrap;' +
-      'border:1px solid rgba(255,255,255,0.1);' +
-      'box-shadow:0 4px 16px rgba(0,0,0,0.45);' +
-      'opacity:0;transform:translateY(6px) scale(0.96);' +
-      'transition:opacity 0.18s,transform 0.18s;pointer-events:none}' +
-    '#mic-toast.mic-toast-show{opacity:1;transform:translateY(0) scale(1)}';
-
-  document.head.appendChild(style);
-
-  function mount() {
-    if (!document.body.contains(btn)) {
-      document.body.appendChild(btn);
-      document.body.appendChild(toast);
+  function stopActive() {
+    if (activeRec) { try { activeRec.stop(); } catch (_) {} activeRec = null; }
+    if (activeBtn) {
+      activeBtn.classList.remove('vmic--on');
+      activeBtn.innerHTML = MIC_SVG;
+      activeBtn = null;
     }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
-  else mount();
-
-  // --- track last focused text input ---
-  let target = null;
-  document.addEventListener('focusin', function (e) {
-    const el = e.target;
-    if (!el) return;
-    const t = (el.type || '').toLowerCase();
-    if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
-        t !== 'password' && t !== 'hidden' && t !== 'checkbox' &&
-        t !== 'radio' && t !== 'range' && t !== 'file') {
-      target = el;
-    }
-  }, true);
-
-  function showToast(msg, dur) {
-    toast.textContent = msg;
-    toast.classList.add('mic-toast-show');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(function () { toast.classList.remove('mic-toast-show'); }, dur || 2200);
+    activeInput = null;
   }
 
-  // --- speech recognition ---
-  if (!SR) {
-    btn.title = 'Voice input not supported in this browser (try Chrome or Safari)';
-    btn.style.opacity = '0.45';
-    btn.addEventListener('click', function () {
-      showToast('Voice not supported — use Chrome or Safari', 3000);
-    });
-    return;
-  }
+  function startRec(input, btn) {
+    stopActive();
 
-  let rec = null;
+    // Capture existing text as the base
+    let baseText    = input.value.trimEnd();
+    if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+    let finalChunk  = '';
+    let restartTid  = null;
+    let alive       = true; // set false when user taps stop
 
-  function stopRec() {
-    if (rec) { try { rec.stop(); } catch (_) {} rec = null; }
-    btn.classList.remove('mic-listening');
-    btn.innerHTML = '🎤';
-  }
+    const rec = new SR();
+    rec.continuous     = true;
+    rec.interimResults = true;
+    rec.lang           = 'en-US';
 
-  btn.addEventListener('click', function (e) {
-    e.preventDefault();
-
-    if (rec) { stopRec(); return; }
-
-    if (!target || !document.contains(target)) {
-      btn.classList.add('mic-no-target');
-      showToast('Tap a text field first, then tap 🎤', 2500);
-      setTimeout(function () { btn.classList.remove('mic-no-target'); }, 420);
-      return;
-    }
-
-    rec = new SR();
-    rec.lang = 'en-US';
-    rec.continuous = false;
-    rec.interimResults = false;
-
-    rec.onresult = function (ev) {
-      const text = ev.results[0][0].transcript;
-      if (target && document.contains(target)) {
-        target.value = target.value ? target.value + ' ' + text : text;
-        target.dispatchEvent(new Event('input',  { bubbles: true }));
-        target.dispatchEvent(new Event('change', { bubbles: true }));
-        target.focus();
+    rec.onresult = function (e) {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalChunk += e.results[i][0].transcript;
+        } else {
+          interim = e.results[i][0].transcript;
+        }
       }
-      showToast('✓ ' + text, 2000);
-      stopRec();
+      input.value = baseText + finalChunk + interim;
+      input.dispatchEvent(new Event('input',  { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
-    rec.onerror = function (ev) {
-      if (ev.error === 'not-allowed') showToast('Microphone permission denied', 2800);
-      else if (ev.error === 'no-speech') showToast('No speech detected — try again', 2200);
-      stopRec();
+    rec.onerror = function (e) {
+      // not-allowed = mic blocked; anything other than no-speech/aborted is fatal
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        alive = false;
+        stopActive();
+      }
     };
 
-    rec.onend = function () { if (rec) stopRec(); };
+    rec.onend = function () {
+      if (!alive || activeRec !== rec) return;
+      // Roll final text into base before restarting
+      baseText    = input.value.trimEnd();
+      if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+      finalChunk  = '';
+      // Short delay required before calling start() again
+      clearTimeout(restartTid);
+      restartTid = setTimeout(function () {
+        if (!alive || activeRec !== rec) return;
+        try { rec.start(); } catch (_) { alive = false; stopActive(); }
+      }, 180);
+    };
 
-    try {
-      rec.start();
-      btn.classList.add('mic-listening');
-      btn.innerHTML = '⏹';
-      showToast('Listening…', 8000);
-    } catch (_) {
-      stopRec();
+    activeRec   = rec;
+    activeBtn   = btn;
+    activeInput = input;
+    btn.classList.add('vmic--on');
+    btn.innerHTML = STOP_SVG;
+
+    try { rec.start(); } catch (_) { stopActive(); }
+
+    // Expose stop so external callers can stop it
+    rec._stop = function () { alive = false; clearTimeout(restartTid); stopActive(); };
+  }
+
+  // ── Attach mic button to a single input/textarea ──────────────────────────
+  function attach(input) {
+    if (input._vmic) return;
+    const t = (input.type || 'text').toLowerCase();
+    if (['password','hidden','range','checkbox','radio','file',
+         'color','submit','button','image'].indexOf(t) >= 0) return;
+    if (input.dataset.vmicSkip) return; // opt-out attribute
+    input._vmic = true;
+
+    const isTA = input.tagName === 'TEXTAREA';
+
+    // Snapshot flex values BEFORE touching the DOM
+    const cs = window.getComputedStyle(input);
+    const fg = cs.flexGrow, fs = cs.flexShrink, fb = cs.flexBasis;
+    const mw = cs.minWidth, mxw = cs.maxWidth;
+    const curPR = parseFloat(cs.paddingRight) || 0;
+    const curPT = parseFloat(cs.paddingTop)   || 0;
+
+    // Wrapper carries the input's place in the parent flex/grid/block layout
+    const wrap = document.createElement('span');
+    wrap.className = 'vmic-wrap';
+    wrap.style.flexGrow   = fg;
+    wrap.style.flexShrink = fs;
+    wrap.style.flexBasis  = fb;
+    if (parseFloat(mw)  > 0) wrap.style.minWidth = mw;
+    if (mxw && mxw !== 'none' && mxw !== '0px') wrap.style.maxWidth = mxw;
+
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    // Input fills wrapper
+    input.style.flex      = '1 1 0';
+    input.style.minWidth  = '0';
+    input.style.width     = '100%';
+    input.style.boxSizing = 'border-box';
+
+    // Padding to keep text away from the button
+    if (!isTA) {
+      input.style.paddingRight = (Math.max(curPR, 6) + 30) + 'px';
+    } else {
+      input.style.paddingTop = (Math.max(curPT, 6) + (isTA ? 0 : 0)) + 'px';
     }
-  });
+
+    // Mic button
+    const btn = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'vmic-btn' + (isTA ? ' vmic-btn--ta' : '');
+    btn.title     = 'Tap to speak';
+    btn.setAttribute('aria-label', 'Voice input');
+    btn.innerHTML = MIC_SVG;
+    wrap.appendChild(btn);
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (activeBtn === btn) {
+        if (activeRec && activeRec._stop) activeRec._stop();
+        else stopActive();
+      } else {
+        startRec(input, btn);
+      }
+    });
+  }
+
+  // ── CSS ───────────────────────────────────────────────────────────────────
+  function injectCSS() {
+    if (document.getElementById('vmic-css')) return;
+    const s = document.createElement('style');
+    s.id = 'vmic-css';
+    s.textContent =
+      '.vmic-wrap{position:relative;display:flex;align-items:stretch;min-width:0}' +
+      '.vmic-wrap>input,.vmic-wrap>textarea{flex:1;min-width:0;width:100%!important;box-sizing:border-box}' +
+
+      /* Button — default (single-line inputs) */
+      '.vmic-btn{' +
+        'position:absolute;right:6px;top:50%;transform:translateY(-50%);' +
+        'width:26px;height:26px;border-radius:50%;' +
+        'border:1px solid rgba(255,255,255,.1);' +
+        'background:rgba(255,255,255,.05);' +
+        'color:rgba(255,255,255,.45);cursor:pointer;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'padding:0;flex-shrink:0;z-index:3;' +
+        'transition:background .15s,color .15s,border-color .15s}' +
+
+      /* Button — textarea variant (anchored top-right) */
+      '.vmic-btn--ta{top:8px;transform:none}' +
+
+      '.vmic-btn:hover{' +
+        'background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);' +
+        'border-color:rgba(255,255,255,.22)}' +
+
+      /* Active / recording state */
+      '.vmic-btn.vmic--on{' +
+        'background:rgba(220,55,55,.22)!important;' +
+        'color:#e05555!important;' +
+        'border-color:rgba(220,55,55,.5)!important;' +
+        'animation:vmic-pulse 1s ease-in-out infinite}' +
+
+      '@keyframes vmic-pulse{' +
+        '0%,100%{box-shadow:0 0 0 0 rgba(220,55,55,.55)}' +
+        '50%{box-shadow:0 0 0 7px rgba(220,55,55,0)}}';
+    document.head.appendChild(s);
+  }
+
+  // ── Scan & observe ────────────────────────────────────────────────────────
+  let scanTid;
+  function scan() {
+    clearTimeout(scanTid);
+    scanTid = setTimeout(function () {
+      document.querySelectorAll(
+        'input:not([data-vmic-skip]),textarea:not([data-vmic-skip])'
+      ).forEach(attach);
+    }, 40);
+  }
+
+  injectCSS();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan);
+  else scan();
+  new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
 })();
