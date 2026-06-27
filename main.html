@@ -2182,7 +2182,7 @@ body::after {
       method: 'POST',
       mode: 'no-cors',
       body: JSON.stringify({ task: text, datetime: dt.toISOString() }),
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'text/plain' }
     }).catch(() => {});
   }
 
