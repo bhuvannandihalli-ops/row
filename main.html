@@ -1011,7 +1011,26 @@ body::after {
       </div>
     </div>
 
-    <!-- PLAN TOMORROW -->
+  </div>
+
+  <div class="section" style="margin-top:22px">
+    <div class="section-title">Today's Schedule</div>
+    <div class="gm-card" id="schedCard">
+      <div id="schedEnergyBanner" style="display:none"></div>
+      <div id="schedList"></div>
+      <div id="schedEmpty" class="empty-state">No tasks scheduled — add one below or use AI Pick.</div>
+      <div class="sched-input-row">
+        <input id="schedInput" class="gm-input" type="text" placeholder="Add a scheduled task…" autocomplete="off">
+        <input id="schedTime"  class="sched-time" type="time" value="09:00">
+        <button id="schedAddBtn" class="gm-add">+ Add</button>
+        <button id="schedAiBtn"  class="gm-schedule">⚡ AI Pick</button>
+        <div class="gm-status" id="schedStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:22px">
+    <div class="section-title">Plan Tomorrow</div>
     <div class="gm-card gm-card-tomorrow" id="gmCardTomorrow">
       <div class="gm-header">
         <div class="gm-header-left">
@@ -1027,22 +1046,6 @@ body::after {
         <button type="button" id="tomorrowAddBtn"    class="gm-add">+ Add</button>
         <button type="button" id="tomorrowPolishBtn" class="gm-polish">✨ Polish</button>
         <div class="gm-status" id="tomorrowStatus"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="section" style="margin-top:22px">
-    <div class="section-title">Today's Schedule</div>
-    <div class="gm-card" id="schedCard">
-      <div id="schedEnergyBanner" style="display:none"></div>
-      <div id="schedList"></div>
-      <div id="schedEmpty" class="empty-state">No tasks scheduled — add one below or use AI Pick.</div>
-      <div class="sched-input-row">
-        <input id="schedInput" class="gm-input" type="text" placeholder="Add a scheduled task…" autocomplete="off">
-        <input id="schedTime"  class="sched-time" type="time" value="09:00">
-        <button id="schedAddBtn" class="gm-add">+ Add</button>
-        <button id="schedAiBtn"  class="gm-schedule">⚡ AI Pick</button>
-        <div class="gm-status" id="schedStatus"></div>
       </div>
     </div>
   </div>
