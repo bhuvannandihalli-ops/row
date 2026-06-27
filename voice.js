@@ -89,7 +89,7 @@
     if (input._vmic) return;
     const t = (input.type || 'text').toLowerCase();
     if (['password','hidden','range','checkbox','radio','file',
-         'color','submit','button','image'].indexOf(t) >= 0) return;
+         'color','submit','button','image','time','date','datetime-local','month','week'].indexOf(t) >= 0) return;
     if (input.dataset.vmicSkip) return; // opt-out attribute
     input._vmic = true;
 
