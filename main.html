@@ -921,6 +921,32 @@ body::after {
   font-size: 13px; font-weight: 600; color: #F2C063;
 }
 .sched-energy-banner span { font-size: 16px; }
+.sched-connect-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 12px; color: rgba(255,255,255,0.38);
+}
+.sched-connect-row input {
+  flex: 1; min-width: 0;
+  padding: 7px 10px; border-radius: 10px; font-size: 12px;
+  background: rgba(0,0,0,0.28); color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.07); outline: none;
+  font-family: var(--font);
+}
+.sched-connect-row input:focus { border-color: rgba(124,92,255,0.45); }
+.sched-connect-btn {
+  padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  background: rgba(124,92,255,0.14); border: 1px solid rgba(124,92,255,0.28);
+  color: var(--purple); cursor: pointer; white-space: nowrap;
+  transition: background 0.18s;
+}
+.sched-connect-btn:hover { background: rgba(124,92,255,0.24); }
+.sched-connected-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--success); margin-top: 10px;
+  padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);
+}
 @media (max-width: 600px) {
   .sched-time { min-width: 90px; }
   .sched-input-row .gm-add, .sched-input-row .gm-schedule { font-size: 14px; padding: 13px 14px; min-height: 48px; }
@@ -1026,6 +1052,7 @@ body::after {
         <button id="schedAiBtn"  class="gm-schedule">⚡ AI Pick</button>
         <div class="gm-status" id="schedStatus"></div>
       </div>
+      <div id="schedCalConnect"></div>
     </div>
   </div>
 
@@ -2144,6 +2171,42 @@ body::after {
     renderSched();
   };
 
+  const GCAL_KEY = 'gcal_script_url';
+
+  function autoAddToGCal(text, hour, min) {
+    const url = localStorage.getItem(GCAL_KEY);
+    if (!url) return;
+    const today = new Date();
+    const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, min, 0);
+    fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({ task: text, datetime: dt.toISOString() }),
+      headers: { 'Content-Type': 'application/json' }
+    }).catch(() => {});
+  }
+
+  function renderCalConnect() {
+    const el = document.getElementById('schedCalConnect');
+    if (!el) return;
+    const url = localStorage.getItem(GCAL_KEY);
+    if (url) {
+      el.innerHTML = `<div class="sched-connected-badge">✓ Auto-adding to Google Calendar <button class="sched-connect-btn" style="margin-left:auto;font-size:11px;padding:4px 9px" id="gcalDisconnect">Disconnect</button></div>`;
+      document.getElementById('gcalDisconnect').onclick = () => {
+        localStorage.removeItem(GCAL_KEY);
+        renderCalConnect();
+      };
+    } else {
+      el.innerHTML = `<div class="sched-connect-row"><span>Auto-add to Google Calendar:</span><input id="gcalUrlInput" placeholder="Paste Apps Script URL here…" data-vmic-skip="true"><button class="sched-connect-btn" id="gcalSaveBtn">Connect</button></div>`;
+      document.getElementById('gcalSaveBtn').onclick = () => {
+        const v = document.getElementById('gcalUrlInput').value.trim();
+        if (!v.startsWith('https://')) return;
+        localStorage.setItem(GCAL_KEY, v);
+        renderCalConnect();
+      };
+    }
+  }
+
   function addSchedItem(text, hour, min) {
     const items = loadSched();
     const id = Date.now().toString(36);
@@ -2151,6 +2214,7 @@ body::after {
     items.push({ id, text, hour, min, calUrl });
     saveSched(items);
     renderSched();
+    autoAddToGCal(text, hour, min);
     return calUrl;
   }
 
@@ -2258,6 +2322,7 @@ Best time today to schedule this task?` }]
   // Init schedule section
   updateEnergyBanner();
   renderSched();
+  renderCalConnect();
   setInterval(updateEnergyBanner, 300000);
 
   // ---------- Boot ----------
