@@ -859,6 +859,73 @@ body::after {
   transition: background 0.15s;
 }
 .mm-event-cal:hover { background: rgba(110,231,183,0.16); }
+
+/* === Schedule section === */
+.sched-input-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.sched-time {
+  padding: 11px 12px;
+  border: 1px solid rgba(255,255,255,0.082);
+  border-radius: 13px;
+  background: rgba(0,0,0,0.32);
+  color: var(--text-primary);
+  font-family: var(--font); font-size: 14px;
+  outline: none;
+  min-width: 110px;
+  transition: border-color 0.22s, box-shadow 0.22s;
+  color-scheme: dark;
+}
+.sched-time:focus {
+  border-color: rgba(124,92,255,0.55);
+  box-shadow: 0 0 0 3px rgba(124,92,255,0.13);
+}
+.sched-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px; margin-bottom: 7px;
+  background: rgba(255,255,255,0.032);
+  border: 1px solid rgba(255,255,255,0.058);
+  border-radius: 16px;
+  transition: background 0.22s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.sched-item:hover { background: rgba(255,255,255,0.055); transform: translateY(-1px); }
+.sched-item-time {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  color: var(--purple, #7C5CFF); min-width: 52px;
+}
+.sched-item-text { flex: 1; font-size: 14px; color: var(--text-primary); }
+.sched-item-cal {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 9px;
+  background: rgba(93,217,160,0.08); border: 1px solid rgba(93,217,160,0.18);
+  color: var(--success, #5DD9A0); font-size: 11px; font-weight: 600;
+  text-decoration: none; white-space: nowrap;
+  transition: background 0.15s;
+}
+.sched-item-cal:hover { background: rgba(93,217,160,0.16); }
+.sched-item-del {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: none; background: rgba(255,107,107,0.10);
+  color: var(--danger, #FF6B6B); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.sched-item-del:hover { background: rgba(255,107,107,0.24); }
+.sched-energy-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 14px; margin-bottom: 14px;
+  background: rgba(242,192,99,0.08);
+  border: 1px solid rgba(242,192,99,0.20);
+  font-size: 13px; font-weight: 600; color: #F2C063;
+}
+.sched-energy-banner span { font-size: 16px; }
+@media (max-width: 600px) {
+  .sched-time { min-width: 90px; }
+  .sched-input-row .gm-add, .sched-input-row .gm-schedule { font-size: 14px; padding: 13px 14px; min-height: 48px; }
+  .sched-time { font-size: 16px; padding: 13px 12px; }
+}
 </style>
 </head>
 <body>
@@ -960,6 +1027,22 @@ body::after {
         <button type="button" id="tomorrowAddBtn"    class="gm-add">+ Add</button>
         <button type="button" id="tomorrowPolishBtn" class="gm-polish">✨ Polish</button>
         <div class="gm-status" id="tomorrowStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:22px">
+    <div class="section-title">Today's Schedule</div>
+    <div class="gm-card" id="schedCard">
+      <div id="schedEnergyBanner" style="display:none"></div>
+      <div id="schedList"></div>
+      <div id="schedEmpty" class="empty-state">No tasks scheduled — add one below or use AI Pick.</div>
+      <div class="sched-input-row">
+        <input id="schedInput" class="gm-input" type="text" placeholder="Add a scheduled task…" autocomplete="off">
+        <input id="schedTime"  class="sched-time" type="time" value="09:00">
+        <button id="schedAddBtn" class="gm-add">+ Add</button>
+        <button id="schedAiBtn"  class="gm-schedule">⚡ AI Pick</button>
+        <div class="gm-status" id="schedStatus"></div>
       </div>
     </div>
   </div>
@@ -1681,6 +1764,12 @@ body::after {
       }
     } catch(e) {}
 
+    let cafContext = '';
+    try {
+      const ep2 = JSON.parse(localStorage.getItem('caf:energy_peak') || 'null');
+      if (ep2 && ep2.label) cafContext = ` Caffeine energy peak: ${ep2.label} (${ep2.windowLabel}).`;
+    } catch {}
+
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -1689,7 +1778,7 @@ body::after {
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001', max_tokens: 150,
           system: 'You are a schedule optimizer. Reply only in the format:\nTIME: HH:MM\nREASON: one sentence',
-          messages: [{ role: 'user', content: `Health stats: ${healthSummary}\nTask: "${taskName}"\nBest time today?` }]
+          messages: [{ role: 'user', content: `Health stats: ${healthSummary}.${cafContext}\nTask: "${taskName}"\nBest time today?` }]
         })
       });
       const json = await res.json();
@@ -1968,6 +2057,171 @@ body::after {
     }
   })();
 
+  // ==================== SCHEDULE SECTION ====================
+  const SCHED_KEY = 'sched:today:' + getActiveDateString();
+
+  function loadSched() {
+    try { return JSON.parse(localStorage.getItem(SCHED_KEY) || '[]'); } catch { return []; }
+  }
+  function saveSched(items) {
+    localStorage.setItem(SCHED_KEY, JSON.stringify(items));
+  }
+
+  function buildGCalUrlTimed(text, h, m) {
+    const now = new Date();
+    const y = now.getFullYear(), mo = pad2(now.getMonth()+1), dd = pad2(now.getDate());
+    const eh = pad2((h+1)%24);
+    const details = encodeURIComponent('Scheduled from Bhuvan\'s Dashboard');
+    return 'https://calendar.google.com/calendar/r/eventedit?text=' + encodeURIComponent(text) +
+      '&dates=' + y+mo+dd+'T'+pad2(h)+pad2(m)+'00/' + y+mo+dd+'T'+eh+pad2(m)+'00' +
+      '&details=' + details;
+  }
+
+  function fmtTime(h, m) {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h % 12 || 12;
+    return hh + ':' + pad2(m) + ' ' + ampm;
+  }
+
+  function renderSched() {
+    const items = loadSched();
+    const listEl  = document.getElementById('schedList');
+    const emptyEl = document.getElementById('schedEmpty');
+    emptyEl.style.display = items.length === 0 ? 'block' : 'none';
+
+    const sorted = items.slice().sort((a,b) => a.hour*60+a.min - (b.hour*60+b.min));
+
+    listEl.innerHTML = sorted.map(item => `
+      <div class="sched-item">
+        <div class="sched-item-time">${fmtTime(item.hour, item.min)}</div>
+        <div class="sched-item-text">${item.text.replace(/</g,'&lt;')}</div>
+        <a class="sched-item-cal" href="${item.calUrl}" target="_blank" rel="noopener">📅 Calendar</a>
+        <button class="sched-item-del" onclick="window._schedDel('${item.id}')" title="Remove">✕</button>
+      </div>`).join('');
+  }
+
+  window._schedDel = function(id) {
+    const items = loadSched().filter(x => x.id !== id);
+    saveSched(items);
+    renderSched();
+  };
+
+  function addSchedItem(text, hour, min) {
+    const items = loadSched();
+    const id = Date.now().toString(36);
+    const calUrl = buildGCalUrlTimed(text, hour, min);
+    items.push({ id, text, hour, min, calUrl });
+    saveSched(items);
+    renderSched();
+    return calUrl;
+  }
+
+  function updateEnergyBanner() {
+    const banner = document.getElementById('schedEnergyBanner');
+    try {
+      const ep = JSON.parse(localStorage.getItem('caf:energy_peak') || 'null');
+      if (!ep || !ep.label) { banner.style.display = 'none'; return; }
+      banner.style.display = 'flex';
+      banner.className = 'sched-energy-banner';
+      banner.innerHTML = `<span>⚡</span> Energy peak at <strong>${ep.label}</strong> — schedule deep work then (${ep.windowLabel})`;
+    } catch { banner.style.display = 'none'; }
+  }
+
+  document.getElementById('schedAddBtn').addEventListener('click', () => {
+    const text = document.getElementById('schedInput').value.trim();
+    const timeVal = document.getElementById('schedTime').value;
+    if (!text) { document.getElementById('schedInput').focus(); return; }
+    const [hStr, mStr] = timeVal.split(':');
+    const hour = parseInt(hStr) || 9, min = parseInt(mStr) || 0;
+    const calUrl = addSchedItem(text, hour, min);
+    document.getElementById('schedInput').value = '';
+    showStatusHtml(document.getElementById('schedStatus'),
+      '✓ Scheduled for ' + fmtTime(hour, min) +
+      ' <a class="gm-cal-link" href="' + calUrl + '" target="_blank">📅 Open Calendar</a>', false);
+  });
+
+  document.getElementById('schedInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('schedAddBtn').click(); }
+  });
+
+  document.getElementById('schedAiBtn').addEventListener('click', async () => {
+    const text = document.getElementById('schedInput').value.trim();
+    if (!text) { document.getElementById('schedInput').focus(); return; }
+    const apiKey = localStorage.getItem('nova_lite_api_key');
+    if (!apiKey) {
+      showStatus(document.getElementById('schedStatus'), 'Set Nova API key first', true);
+      return;
+    }
+    const btn = document.getElementById('schedAiBtn');
+    btn.disabled = true; btn.textContent = '…';
+
+    let cafCtx = '';
+    try {
+      const ep = JSON.parse(localStorage.getItem('caf:energy_peak') || 'null');
+      if (ep && ep.label) cafCtx = `Caffeine energy peak: ${ep.label} (window: ${ep.windowLabel}, ${ep.activeMg}mg active).`;
+    } catch {}
+
+    let healthSummary = '';
+    try {
+      const SUPABASE_URL_M2 = 'https://szelyvlqzruwnwhnuchb.supabase.co';
+      const ANON_KEY_M2 = 'sb_publishable_G-znLn3MKl9EIK6w4jL3LQ_811bZKzz';
+      const r = await fetch(`${SUPABASE_URL_M2}/rest/v1/health_daily?select=*&order=date.desc&limit=1`,
+        { headers: { apikey: ANON_KEY_M2, Authorization: 'Bearer ' + ANON_KEY_M2 } });
+      const rows = await r.json();
+      if (rows.length) {
+        const d = rows[0];
+        healthSummary = [
+          d.sleep_hours > 0 ? `Sleep: ${Number(d.sleep_hours).toFixed(1)}h` : null,
+          d.hrv > 0 ? `HRV: ${d.hrv}ms` : null,
+          d.resting_hr > 0 ? `RHR: ${d.resting_hr}bpm` : null,
+        ].filter(Boolean).join(', ');
+      }
+    } catch {}
+
+    try {
+      const now = new Date();
+      const currentTime = `${now.getHours()}:${pad2(now.getMinutes())}`;
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type':'application/json','x-api-key':apiKey,
+          'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 120,
+          system: 'You are a schedule optimizer. Reply ONLY in this format:\nTIME: HH:MM\nREASON: one sentence why',
+          messages: [{ role: 'user', content:
+            `Current time: ${currentTime}. ${cafCtx} ${healthSummary ? 'Health: ' + healthSummary + '.' : ''}
+Task: "${text}"
+Best time today to schedule this task?` }]
+        })
+      });
+      const json = await res.json();
+      const txt = (json.content && json.content[0] && json.content[0].text) || '';
+      const timeMatch = txt.match(/TIME:\s*(\d{1,2}):(\d{2})/);
+      const reasonMatch = txt.match(/REASON:\s*(.+)/);
+      if (timeMatch) {
+        const h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+        const reason = reasonMatch ? reasonMatch[1].trim() : '';
+        const calUrl = addSchedItem(text, h, m);
+        document.getElementById('schedInput').value = '';
+        document.getElementById('schedTime').value = pad2(h) + ':' + pad2(m);
+        showStatusHtml(document.getElementById('schedStatus'),
+          '⚡ ' + fmtTime(h, m) + (reason ? ' — ' + reason : '') +
+          ' <a class="gm-cal-link" href="' + calUrl + '" target="_blank">📅 Calendar</a>', false);
+      } else {
+        showStatus(document.getElementById('schedStatus'), 'Could not parse AI response', true);
+      }
+    } catch(e) {
+      showStatus(document.getElementById('schedStatus'), 'AI error: ' + e.message, true);
+    } finally {
+      btn.disabled = false; btn.textContent = '⚡ AI Pick';
+    }
+  });
+
+  // Init schedule section
+  updateEnergyBanner();
+  renderSched();
+  setInterval(updateEnergyBanner, 300000);
+
   // ---------- Boot ----------
   rollover();
   processStreak();
@@ -1981,6 +2235,7 @@ body::after {
   // Re-render when storage changes from another tab (or our bridged parent).
   window.addEventListener('storage', () => {
     loadToday(); loadTomorrow(); renderStreak();
+    updateEnergyBanner();
   });
 })();
 </script>

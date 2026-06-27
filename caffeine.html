@@ -26,7 +26,7 @@
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;
-  background: #060a1c;
+  background: #04050e;
   color: var(--text-secondary);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -45,7 +45,6 @@ body::before {
   background:
     radial-gradient(circle at 70% 15%, rgba(201,163,107,0.14), transparent 50%),
     radial-gradient(circle at 20% 85%, rgba(180,140,80,0.07), transparent 50%);
-  filter: blur(40px);
   pointer-events: none;
   z-index: -2;
   animation: drift 38s ease-in-out infinite alternate;
@@ -503,6 +502,63 @@ body::after {
 .li-del:hover { background: rgba(255,107,107,0.28); }
 
 /* =============================================
+   ENERGY PEAK TOAST
+   ============================================= */
+.peak-toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; border-radius: 14px; margin-bottom: 12px;
+  background: rgba(242,192,99,0.10);
+  border: 1px solid rgba(242,192,99,0.28);
+  font-size: 13px; font-weight: 600; color: #F2C063;
+  animation: toastIn 0.38s cubic-bezier(0.22,1,0.36,1) both;
+}
+.peak-toast span { font-size: 16px; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); max-height: 60px; margin-bottom: 12px; padding: 11px 16px; }
+  to   { opacity: 0; transform: translateY(-8px); max-height: 0; margin-bottom: 0; padding: 0 16px; }
+}
+.peak-toast.dismissing {
+  animation: toastOut 0.38s cubic-bezier(0.22,1,0.36,1) forwards;
+  overflow: hidden;
+}
+
+/* =============================================
+   ENERGY PEAK HERO TILE
+   ============================================= */
+.peak-hero {
+  background: linear-gradient(135deg, rgba(242,192,99,0.10) 0%, rgba(201,163,107,0.06) 100%);
+  border: 1px solid rgba(242,192,99,0.25);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.peak-hero-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+.peak-hero-body { flex: 1; min-width: 0; }
+.peak-hero-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(242,192,99,0.7);
+  margin-bottom: 2px;
+}
+.peak-hero-time {
+  font-size: 30px; font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #F2C063;
+  line-height: 1;
+}
+.peak-hero-sub {
+  font-size: 11px; color: var(--text-tertiary);
+  margin-top: 3px;
+}
+
+/* =============================================
    RESPONSIVE
    ============================================= */
 @media (max-width: 540px) {
@@ -523,6 +579,7 @@ body::after {
   <!-- ========== §1 YOUR DAY ========== -->
   <div class="section-title">Your Day</div>
   <div class="caf-card" id="card-day">
+    <div id="peak-toast-container"></div>
     <div class="day-layout">
       <div class="day-ring-wrap">
         <svg class="ring-svg" viewBox="0 0 96 96">
@@ -553,13 +610,16 @@ body::after {
   <!-- ========== §2 SMART TIMING ========== -->
   <div class="section-title">Smart Timing</div>
   <div class="caf-card">
-    <div class="timing-grid">
-      <div class="timing-tile">
-        <div class="tt-icon">⚡</div>
-        <div class="tt-label">Best window</div>
-        <div class="tt-val" id="tt-window">—</div>
-        <div class="tt-sub" id="tt-window-sub">Cortisol low</div>
+    <!-- Energy peak hero tile -->
+    <div class="peak-hero" id="peak-hero">
+      <div class="peak-hero-icon">★</div>
+      <div class="peak-hero-body">
+        <div class="peak-hero-label">Energy Peak</div>
+        <div class="peak-hero-time" id="peak-hero-time">—</div>
+        <div class="peak-hero-sub" id="peak-hero-sub">Your energy peak — best for deep / focused work</div>
       </div>
+    </div>
+    <div class="timing-grid">
       <div class="timing-tile">
         <div class="tt-icon">🌙</div>
         <div class="tt-label">Last safe dose</div>
@@ -571,6 +631,12 @@ body::after {
         <div class="tt-label">Half-life clears</div>
         <div class="tt-val" id="tt-clear">—</div>
         <div class="tt-sub">From last drink</div>
+      </div>
+      <div class="timing-tile">
+        <div class="tt-icon">🪟</div>
+        <div class="tt-label">Peak window</div>
+        <div class="tt-val" id="tt-window">—</div>
+        <div class="tt-sub" id="tt-window-sub">High-energy zone</div>
       </div>
     </div>
     <div class="tips-list" id="tips-list"></div>
@@ -893,6 +959,14 @@ function renderCurve() {
   const ny = yToY(energyAt(now));
   markup += `<circle cx="${nx}" cy="${ny}" r="4" fill="#C9A36B" stroke="#050506" stroke-width="2"/>`;
 
+  // Energy peak line & star
+  const peakH = findEnergyPeak();
+  const px = hToX(peakH);
+  const py = yToY(energyAt(peakH));
+  markup += `<line x1="${px}" y1="${PAD.t}" x2="${px}" y2="${PAD.t+plotH}" stroke="#F2C063" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.85"/>`;
+  markup += `<text x="${px}" y="${PAD.t - 1}" text-anchor="middle" font-size="9" fill="#F2C063" font-family="monospace">★</text>`;
+  markup += `<circle cx="${px}" cy="${py}" r="3.5" fill="#F2C063" stroke="#04050e" stroke-width="1.5"/>`;
+
   // Hover
   if (hoverH !== null) {
     const hx = hToX(hoverH);
@@ -956,15 +1030,85 @@ function updateDayCard() {
 }
 
 /* ========================================================
+   ENERGY PEAK CALCULATION
+   ======================================================== */
+function findEnergyPeak() {
+  let peakH = wakeHour, peakVal = 0;
+  for (let h = 0; h <= 24; h += 0.25) {
+    const v = energyAt(h);
+    if (v > peakVal) { peakVal = v; peakH = h; }
+  }
+  return peakH;
+}
+
+function formatHourLabel(h) {
+  h = ((h % 24) + 24) % 24;
+  const hh = Math.floor(h);
+  const mm = Math.round((h % 1) * 60);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const disp = hh % 12 || 12;
+  return disp + ':' + String(mm).padStart(2, '0') + ' ' + ampm;
+}
+
+function publishEnergyPeak() {
+  const peakH = findEnergyPeak();
+  const peakHh = Math.floor(peakH);
+  const peakMm = Math.round((peakH % 1) * 60);
+  const label = formatHourLabel(peakH);
+  const activeMgAtPeak = Math.round(totalActiveAt(peakH));
+  const windowStartHour = Math.max(peakH - 1, wakeHour);
+  const windowEndHour   = Math.min(peakH + 1, sleepHour);
+  const windowLabel = formatHourLabel(windowStartHour) + '–' + formatHourLabel(windowEndHour);
+
+  localStorage.setItem('caf:energy_peak', JSON.stringify({
+    hour: peakH,
+    label: label,
+    activeMg: activeMgAtPeak,
+    windowStartHour: windowStartHour,
+    windowEndHour:   windowEndHour,
+    windowLabel:     windowLabel,
+    updatedAt: new Date().toISOString()
+  }));
+
+  // Update hero tile
+  const heroTime = document.getElementById('peak-hero-time');
+  const heroSub  = document.getElementById('peak-hero-sub');
+  if (heroTime) heroTime.textContent = label;
+  if (heroSub)  heroSub.textContent  = 'Energy peak — best for deep / focused work (' + windowLabel + ')';
+}
+
+let _toastTimer = null;
+function showPeakToast(peakLabel) {
+  const container = document.getElementById('peak-toast-container');
+  if (!container) return;
+  // Remove any existing toast
+  const existing = container.querySelector('.peak-toast');
+  if (existing) existing.remove();
+  if (_toastTimer) clearTimeout(_toastTimer);
+
+  const toast = document.createElement('div');
+  toast.className = 'peak-toast';
+  toast.innerHTML = '<span>⚡</span> Energy peak at <strong style="margin:0 4px">' + peakLabel + '</strong> — best time for deep work';
+  container.appendChild(toast);
+
+  _toastTimer = setTimeout(() => {
+    toast.classList.add('dismissing');
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 400);
+  }, 8000);
+}
+
+/* ========================================================
    TIMING SECTION
    ======================================================== */
 function updateTiming() {
   const now = nowFrac();
+  const peakH = findEnergyPeak();
 
-  // Best window: 9:30–11:30 AM (after cortisol, before lunch)
-  const windowStart = Math.max(now, 9.5);
-  const windowStr = formatHour(windowStart) + '–' + formatHour(Math.min(windowStart+2, 11.5));
-  document.getElementById('tt-window').textContent = windowStart > 11.5 ? 'Tomorrow' : windowStr;
+  // Peak window: ±1h around peak
+  const windowStart = Math.max(peakH - 1, wakeHour);
+  const windowEnd   = Math.min(peakH + 1, sleepHour);
+  const windowStr   = formatHour(windowStart) + '–' + formatHour(windowEnd);
+  document.getElementById('tt-window').textContent = windowStr;
 
   // Last safe dose: latest dose such that active caffeine at sleep < 50mg
   // Simplified: 5 half-lives before sleep = sleep - 25h; cap at sleep - 6h for usability
@@ -1080,6 +1224,9 @@ function logDrink(drink) {
   logs.push(entry);
   saveLogs();
   updateAll();
+  // Show peak toast after logging
+  const peakH = findEnergyPeak();
+  showPeakToast(formatHourLabel(peakH));
 }
 
 function deleteLog(id) {
@@ -1199,6 +1346,7 @@ function updateAll() {
   updateTiming();
   updateStats();
   renderLogList();
+  publishEnergyPeak();
 }
 
 /* ========================================================
