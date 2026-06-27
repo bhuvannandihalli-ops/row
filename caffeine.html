@@ -800,6 +800,9 @@ let wakeHour = 6.5;   // default 6:30 AM
 let sleepHour = 22.5; // default 10:30 PM
 let bodyWeight = 70;  // kg
 
+const SB_URL  = 'https://szelyvlqzruwnwhnuchb.supabase.co';
+const SB_KEY  = 'sb_publishable_G-znLn3MKl9EIK6w4jL3LQ_811bZKzz';
+
 const DAILY_LIMIT = 400;
 const HALF_LIFE = 5;   // hours
 const PEAK_DELAY = 0.75; // hours after dose, peak absorption
@@ -1312,22 +1315,31 @@ async function fetchExternalData() {
     if (wp.profile && wp.profile.weightKg) bodyWeight = wp.profile.weightKg;
   } catch {}
 
-  // Wake time from main dashboard (set when user taps "I woke up" or Apple Health syncs)
+  // Wake time: localStorage first (instant), then Supabase wake_time column (Apple Watch)
+  const todayStr = new Date().toISOString().substring(0, 10);
   try {
-    const todayStr = new Date().toISOString().substring(0, 10);
-    const wakeISO  = localStorage.getItem('wake_time:' + todayStr);
+    const wakeISO = localStorage.getItem('wake_time:' + todayStr);
     if (wakeISO) {
       const wt = new Date(wakeISO);
       wakeHour = wt.getHours() + wt.getMinutes() / 60;
     }
   } catch {}
 
-  // Wake/sleep from WHOOP (fallback)
+  // Fetch from Supabase — wake_time column (set by iOS Shortcut via Apple Watch)
   try {
-    const r = await fetch('/api/whoop-data?type=sleep');
-    if (r.ok) {
-      const d = await r.json();
-      if (d && d.start) wakeHour = new Date(d.end).getHours() + new Date(d.end).getMinutes()/60;
+    const res = await fetch(
+      `${SB_URL}/rest/v1/health_daily?select=wake_time,date&order=date.desc&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length && rows[0].date === todayStr && rows[0].wake_time) {
+      const wt = new Date(rows[0].wake_time);
+      const sbHour = wt.getHours() + wt.getMinutes() / 60;
+      // Use whichever is earlier (Apple Watch is most accurate)
+      if (sbHour < wakeHour || wakeHour === 6.5) {
+        wakeHour = sbHour;
+        localStorage.setItem('wake_time:' + todayStr, wt.toISOString());
+      }
     }
   } catch {}
 }

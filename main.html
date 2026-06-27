@@ -1863,7 +1863,7 @@ body::after {
     // 2. Fetch from Supabase (may refine if Apple Health synced)
     try {
       const res = await fetch(
-        `${SUPABASE_URL_M}/rest/v1/health_daily?select=sleep_hours,updated_at,date&order=date.desc&limit=7`,
+        `${SUPABASE_URL_M}/rest/v1/health_daily?select=sleep_hours,updated_at,date,wake_time&order=date.desc&limit=7`,
         { headers: { apikey: ANON_KEY_M, Authorization: 'Bearer ' + ANON_KEY_M } }
       );
       const rows = await res.json();
@@ -1871,7 +1871,7 @@ body::after {
 
       const today = rows[0];
 
-      if (today.date === todayStr && today.updated_at) {
+      if (today.date === todayStr && (today.wake_time || today.updated_at)) {
         // Apple Health synced today — this is authoritative
         alarmDismissedToday = true;
         if (window._mmOpen && !localStorage.getItem('morning_checkin:' + todayStr)) window._mmOpen();
@@ -1879,18 +1879,21 @@ body::after {
         const btn = document.getElementById('sleepToggleBtn');
         if (btn) { btn.textContent = '🌙 Going to sleep'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
 
-        const wakeTime = new Date(today.updated_at);
-        // Only override manual wake if Health sync is earlier (more accurate)
+        // Prefer dedicated wake_time column, fall back to updated_at proxy
+        const wakeTime = today.wake_time ? new Date(today.wake_time) : new Date(today.updated_at);
+        // Only override manual wake if Apple Watch wake is earlier (more accurate)
         if (!manualWakeISO || wakeTime < new Date(manualWakeISO)) {
           WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
-          // Save it so caffeine tracker can use it too
           localStorage.setItem('wake_time:' + todayStr, wakeTime.toISOString());
         }
         if (hoursEl) {
-          const displayWake = new Date(localStorage.getItem('wake_time:' + todayStr) || today.updated_at);
+          const displayWake = new Date(localStorage.getItem('wake_time:' + todayStr) || wakeTime.toISOString());
           const wakeStr  = displayWake.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const sleepStr = today.sleep_hours ? Number(today.sleep_hours).toFixed(1) + 'h sleep' : '';
-          hoursEl.textContent = sleepStr ? 'Woke ' + wakeStr + ' · ' + sleepStr : 'Woke ' + wakeStr;
+          const source   = today.wake_time ? '· Apple Watch' : '';
+          hoursEl.textContent = sleepStr
+            ? 'Woke ' + wakeStr + ' · ' + sleepStr
+            : 'Woke ' + wakeStr + (source ? ' ' + source : '');
         }
       } else if (!manualWakeISO) {
         // No manual wake, no today sync — use average from past days
