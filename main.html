@@ -1306,8 +1306,20 @@ body::after {
     btn.addEventListener('click', () => {
       const sleeping = localStorage.getItem('sleep_mode') === 'true';
       if (sleeping) {
+        // Record actual wake time right now
+        const now = new Date();
+        const todayStr = now.toISOString().substring(0, 10);
+        localStorage.setItem('wake_time:' + todayStr, now.toISOString());
         localStorage.removeItem('sleep_mode');
         localStorage.removeItem('sleep_mode_date');
+
+        // Apply wake time immediately to day ring
+        WAKE_HOUR = now.getHours() + now.getMinutes() / 60;
+        const hoursEl = document.getElementById('dayRingHours');
+        if (hoursEl) {
+          const wakeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          hoursEl.textContent = 'Woke ' + wakeStr + ' · synced';
+        }
       } else {
         localStorage.setItem('sleep_mode', 'true');
         localStorage.setItem('sleep_mode_date', new Date().toISOString().substring(0, 10));
@@ -1832,8 +1844,23 @@ body::after {
     loadTomorrow
   );
 
-  // ---------- Load Apple Health wake time ----------
+  // ---------- Load wake time (localStorage first, then Supabase) ----------
   (async function () {
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const hoursEl  = document.getElementById('dayRingHours');
+
+    // 1. Check if user manually tapped "I woke up" today
+    const manualWakeISO = localStorage.getItem('wake_time:' + todayStr);
+    if (manualWakeISO) {
+      const wt = new Date(manualWakeISO);
+      WAKE_HOUR = wt.getHours() + wt.getMinutes() / 60;
+      if (hoursEl) {
+        hoursEl.textContent = 'Woke ' + wt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' · synced';
+      }
+      updateDayRing();
+    }
+
+    // 2. Fetch from Supabase (may refine if Apple Health synced)
     try {
       const res = await fetch(
         `${SUPABASE_URL_M}/rest/v1/health_daily?select=sleep_hours,updated_at,date&order=date.desc&limit=7`,
@@ -1842,26 +1869,31 @@ body::after {
       const rows = await res.json();
       if (!Array.isArray(rows) || !rows.length) return;
 
-      const todayStr = new Date().toISOString().substring(0, 10);
       const today = rows[0];
-      const hoursEl = document.getElementById('dayRingHours');
 
-      // If today's health sync exists, alarm was dismissed → they're awake
       if (today.date === todayStr && today.updated_at) {
+        // Apple Health synced today — this is authoritative
         alarmDismissedToday = true;
-        if (window._mmOpen && !localStorage.getItem('morning_checkin:' + new Date().toISOString().substring(0,10))) window._mmOpen();
-        localStorage.removeItem('sleep_mode'); // clear sleep mode — day has started
+        if (window._mmOpen && !localStorage.getItem('morning_checkin:' + todayStr)) window._mmOpen();
+        localStorage.removeItem('sleep_mode');
         const btn = document.getElementById('sleepToggleBtn');
-        if (btn) { btn.textContent = '🌙 Going to sleep'; btn.style.color = '#B8B6B0'; }
+        if (btn) { btn.textContent = '🌙 Going to sleep'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
+
         const wakeTime = new Date(today.updated_at);
-        WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
-        if (hoursEl) {
-          const wakeStr = wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          const sleepStr = today.sleep_hours ? `${Number(today.sleep_hours).toFixed(1)}h sleep` : '';
-          hoursEl.textContent = sleepStr ? `Woke ${wakeStr} · ${sleepStr}` : `Woke ${wakeStr}`;
+        // Only override manual wake if Health sync is earlier (more accurate)
+        if (!manualWakeISO || wakeTime < new Date(manualWakeISO)) {
+          WAKE_HOUR = wakeTime.getHours() + wakeTime.getMinutes() / 60;
+          // Save it so caffeine tracker can use it too
+          localStorage.setItem('wake_time:' + todayStr, wakeTime.toISOString());
         }
-      } else {
-        // Learn average wake time from past days (4 AM–2 PM range)
+        if (hoursEl) {
+          const displayWake = new Date(localStorage.getItem('wake_time:' + todayStr) || today.updated_at);
+          const wakeStr  = displayWake.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const sleepStr = today.sleep_hours ? Number(today.sleep_hours).toFixed(1) + 'h sleep' : '';
+          hoursEl.textContent = sleepStr ? 'Woke ' + wakeStr + ' · ' + sleepStr : 'Woke ' + wakeStr;
+        }
+      } else if (!manualWakeISO) {
+        // No manual wake, no today sync — use average from past days
         const wakeTimes = rows
           .filter(r => r.updated_at)
           .map(r => { const t = new Date(r.updated_at); return t.getHours() + t.getMinutes() / 60; })
@@ -1872,7 +1904,7 @@ body::after {
         if (hoursEl) {
           const wh = Math.floor(WAKE_HOUR), wm = Math.round((WAKE_HOUR - wh) * 60);
           const d = new Date(); d.setHours(wh, wm, 0, 0);
-          hoursEl.textContent = `Avg wake ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · sync pending`;
+          hoursEl.textContent = 'Avg wake ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' · tap button to sync';
         }
       }
       updateDayRing();

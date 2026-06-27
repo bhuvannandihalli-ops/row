@@ -1312,7 +1312,17 @@ async function fetchExternalData() {
     if (wp.profile && wp.profile.weightKg) bodyWeight = wp.profile.weightKg;
   } catch {}
 
-  // Wake/sleep from WHOOP
+  // Wake time from main dashboard (set when user taps "I woke up" or Apple Health syncs)
+  try {
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const wakeISO  = localStorage.getItem('wake_time:' + todayStr);
+    if (wakeISO) {
+      const wt = new Date(wakeISO);
+      wakeHour = wt.getHours() + wt.getMinutes() / 60;
+    }
+  } catch {}
+
+  // Wake/sleep from WHOOP (fallback)
   try {
     const r = await fetch('/api/whoop-data?type=sleep');
     if (r.ok) {
