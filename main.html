@@ -2222,7 +2222,7 @@ body::after {
     const banner = document.getElementById('schedEnergyBanner');
     try {
       const ep = JSON.parse(localStorage.getItem('caf:energy_peak') || 'null');
-      if (!ep || !ep.label) { banner.style.display = 'none'; return; }
+      if (!ep || !ep.label || !ep.hasCaffeine) { banner.style.display = 'none'; return; }
       banner.style.display = 'flex';
       banner.className = 'sched-energy-banner';
       banner.innerHTML = `<span>⚡</span> Energy peak at <strong>${ep.label}</strong> — schedule deep work then (${ep.windowLabel})`;
@@ -2323,7 +2323,7 @@ Best time today to schedule this task?` }]
   updateEnergyBanner();
   renderSched();
   renderCalConnect();
-  setInterval(updateEnergyBanner, 300000);
+  setInterval(updateEnergyBanner, 30000);
 
   // ---------- Boot ----------
   rollover();

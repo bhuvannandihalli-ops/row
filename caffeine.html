@@ -1054,6 +1054,17 @@ function formatHourLabel(h) {
 }
 
 function publishEnergyPeak() {
+  // Only publish if coffee has been logged today
+  const todayHasCoffee = logs.some(l => isToday(l.ts));
+  if (!todayHasCoffee) {
+    localStorage.removeItem('caf:energy_peak');
+    const heroTime = document.getElementById('peak-hero-time');
+    const heroSub  = document.getElementById('peak-hero-sub');
+    if (heroTime) heroTime.textContent = '—';
+    if (heroSub)  heroSub.textContent  = 'Log a coffee to see your energy peak';
+    return;
+  }
+
   const peakH = findEnergyPeak();
   const peakHh = Math.floor(peakH);
   const peakMm = Math.round((peakH % 1) * 60);
@@ -1070,6 +1081,7 @@ function publishEnergyPeak() {
     windowStartHour: windowStartHour,
     windowEndHour:   windowEndHour,
     windowLabel:     windowLabel,
+    hasCaffeine: true,
     updatedAt: new Date().toISOString()
   }));
 
