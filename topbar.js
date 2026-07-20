@@ -222,6 +222,10 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
       <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg></span>
       Logger
     </a>
+    <a href="supplements.html" class="bottombar-tab" data-page="supplements">
+      <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 0-2-2v-4m0 0h18"/></svg></span>
+      Fuel
+    </a>
   </div>
 </nav>`;
 
@@ -238,6 +242,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     if (p.endsWith('health.html')) return 'health';
     if (p.endsWith('gym.html')) return 'fitness';
     if (p.endsWith('workout.html')) return 'workout';
+    if (p.endsWith('supplements.html')) return 'supplements';
     if (p.endsWith('main.html')) return 'main';
     return null;
   }
