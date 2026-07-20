@@ -218,6 +218,10 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
       <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M6 12h12M3 6.5h1.5M19.5 6.5H21M3 17.5h1.5M19.5 17.5H21"/></svg></span>
       Fitness
     </a>
+    <a href="workout.html" class="bottombar-tab" data-page="workout">
+      <span class="bottombar-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg></span>
+      Logger
+    </a>
   </div>
 </nav>`;
 
@@ -233,6 +237,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('health.html')) return 'health';
     if (p.endsWith('gym.html')) return 'fitness';
+    if (p.endsWith('workout.html')) return 'workout';
     if (p.endsWith('main.html')) return 'main';
     return null;
   }
