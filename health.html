@@ -479,6 +479,13 @@ main {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
 
+/* ===== FUEL EMBED ===== */
+.fuel-embed {
+  width: 100%; border: none; border-radius: 22px;
+  min-height: 600px; display: block;
+  background: transparent; margin-bottom: 28px;
+}
+
 /* ===== APPLE HEALTH SECTION ===== */
 .ah-section { margin-bottom: 32px; }
 .ah-card {
@@ -607,46 +614,7 @@ main {
   </section>
 
   <div class="section-title">Daily Stack</div>
-
-  <div class="stack-card">
-    <div class="stack-ticker" id="stackTicker">
-      <span class="stack-ticker-dot"></span>
-      <span class="stack-ticker-label">STACK</span>
-      <span class="stack-ticker-sep">·</span>
-      <span class="stack-ticker-msg" id="stackTickerMsg">All caught up — keep it rolling</span>
-      <span class="stack-ticker-count" id="stackTickerCount">0/0</span>
-    </div>
-
-    <div class="stack-head">
-      <div class="sf-eyebrow">Daily stack</div>
-      <div class="sf-title">Tap each as you take it</div>
-      <div class="stack-progress-text" id="stackProgressText">— / — taken today · resets at 6 AM</div>
-    </div>
-
-    <div class="stack-progress-track">
-      <div id="stackProgressBar" class="stack-progress-fill"></div>
-    </div>
-
-    <div id="stackGroups"></div>
-
-    <div class="stack-add-wrap">
-      <div class="sf-eyebrow stack-add-label">Add to stack</div>
-      <div class="stack-add-row">
-        <div class="stack-name-wrap">
-          <input id="stackAddName" type="text" placeholder="Name (e.g. B-complex)" class="stack-input" autocomplete="off" spellcheck="false" />
-          <div id="stackSearchResults" class="stack-search-results" hidden></div>
-        </div>
-        <input id="stackAddDose" type="text" placeholder="Dose (e.g. 1 cap)" class="stack-input" />
-        <select id="stackAddWindow" class="stack-input stack-select">
-          <option value="morning">Morning</option>
-          <option value="lunch">Lunch</option>
-          <option value="evening">Evening</option>
-          <option value="anytime">Anytime</option>
-        </select>
-        <button id="stackAddBtn" class="stack-add-btn">+ Add</button>
-      </div>
-    </div>
-  </div>
+  <iframe src="supplements.html" class="fuel-embed" loading="lazy" title="Supplement Stack"></iframe>
 
   <section id="water" class="water-embed">
     <div class="section-title">Water Tracker</div>
